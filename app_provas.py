@@ -38,7 +38,7 @@ def mostrar_tela_login():
         "mariana": "senha123",
         "junior": "fam2026",
         "samara": "fam2026",
-        "feu": "fam2026"
+        "Alfredo": "fam2026"
     }
 
     with st.form("login_form"):

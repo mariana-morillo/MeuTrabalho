@@ -3,6 +3,8 @@ import pandas as pd
 import sqlite3
 import re
 from datetime import datetime
+# --- ADICIONE ESTA LINHA AQUI ---
+from db import baixar_banco_do_cofre, criar_base_de_dados, get_db_name
 
 # 1.1 Sincronização de Interface (Fix do emoji cortado e cards padronizados)
 st.set_page_config(page_title="Portal do Aluno FAM", page_icon="🎓", layout="centered")
@@ -64,12 +66,12 @@ DB_PATH = 'banco_provas.db'
 
 def buscar_dados(query, params=()):
     """Função única para buscar dados e retornar um DataFrame"""
-    with sqlite3.connect(DB_PATH) as conn:
+    with sqlite3.connect(get_db_name()) as conn:
         return pd.read_sql(query, conn, params=params)
 
 def executar_comando(query, params=()):
     """Função única para inserir ou atualizar dados (INSERT/UPDATE)"""
-    with sqlite3.connect(DB_PATH) as conn:
+    with sqlite3.connect(get_db_name()) as conn:
         conn.execute(query, params)
         conn.commit()
 # --- ADICIONE ESTAS 4 LINHAS AQUI ---
@@ -98,6 +100,7 @@ if 'aluno_logado_ra' not in st.session_state:
 with st.sidebar:
     st.markdown("### 🔑 Acesso Seguro")
     if not st.session_state.aluno_logado_ra:
+        prof_alvo = st.selectbox("Quem é seu Professor(a)?", ["Mariana", "Junior", "Samara","Alfredo" ])
         ra_login = st.text_input("Seu RA:")
         senha_login = st.text_input("Sua Senha:", type="password")
         
@@ -105,6 +108,10 @@ with st.sidebar:
         lembrar = st.checkbox("Lembrar de mim (Mantenha conectado)")
         
         if st.button("🚀 Entrar", use_container_width=True):
+            # --- ADICIONE ESTAS 3 LINHAS ---
+            st.session_state.usuario_logado = prof_alvo.lower()
+            baixar_banco_do_cofre() 
+            criar_base_de_dados()
             res = buscar_dados("SELECT ra FROM alunos WHERE ra = ? AND senha = ?", (ra_login, senha_login))
             if not res.empty:
                 st.session_state.aluno_logado_ra = ra_login
