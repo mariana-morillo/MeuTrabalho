@@ -5,3 +5,4 @@ opencv-python-headless
 qrcode
 jinja2
 supabase
+plotly
