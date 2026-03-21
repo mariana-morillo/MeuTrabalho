@@ -1,86 +1,61 @@
 import streamlit as st
 import sqlite3
-import pandas as pd
-# Importando o novo módulo que acabamos de criar!
-from latex_utils import sanitizar_nome, escapar_latex, gerar_preview_web, configurar_jinja, compilar_latex_mac
-from db import (criar_backup_banco, backup_para_icloud, obter_estatisticas_questoes, 
-                criar_base_de_dados, limpar_dados_teste, inserir_questao, 
-                buscar_e_embaralhar_alternativas, buscar_alternativas_originais, 
-                carregar_configuracoes, salvar_configuracoes, excluir_questao, 
-                obter_assuntos_da_disciplina, buscar_questoes_filtradas, 
-                salvar_resultado_prova, salvar_feedback_detalhado, 
-                detectar_duplicata, buscar_questoes_proximas)
-from correcao import renderizar_aba_correcao
-from sala import renderizar_aba_sala
-from planejamento import renderizar_aba_fabrica
-from turmas import renderizar_aba_turmas
+import pandas as pd  # Resolvendo o erro do 'pd'
 import os
 import cv2
 import numpy as np
 import plotly.express as plex 
 import random
-import subprocess
-import jinja2
-import unicodedata
-import shutil
-import math
 import json
 import qrcode
-from fractions import Fraction
-import re
 from datetime import datetime, timedelta
-from difflib import SequenceMatcher
-import time
-import streamlit as st
-import sqlite3
-import pandas as pd
-# Adicione a importação das funções do seu db.py
-from db import baixar_banco_do_cofre, salvar_banco_no_cofre, criar_base_de_dados
 
-# =========================================================================
-# --- SISTEMA DE LOGIN ---
-# =========================================================================
-def tela_login():
-    st.set_page_config(page_title="Meu Estudei - FAM", page_icon="🎓", layout="centered")
-    
-    st.image("https://api.dicebear.com/9.x/shapes/svg?seed=MeuEstudei", width=100) # Só um ícone bonitinho
+# 1. Seus módulos personalizados
+from latex_utils import sanitizar_nome, escapar_latex, gerar_preview_web, configurar_jinja, compilar_latex_mac
+from correcao import renderizar_aba_correcao
+from sala import renderizar_aba_sala
+from planejamento import renderizar_aba_fabrica
+from turmas import renderizar_aba_turmas
+
+# 2. O COMBO COMPLETO E REVISADO DO DB.PY (Agora com excluir_questao!)
+from db import (
+    baixar_banco_do_cofre, salvar_banco_no_cofre, criar_base_de_dados, 
+    carregar_configuracoes, salvar_configuracoes, criar_backup_banco, 
+    backup_para_icloud, obter_estatisticas_questoes, limpar_dados_teste, 
+    inserir_questao, buscar_e_embaralhar_alternativas, buscar_alternativas_originais, 
+    obter_assuntos_da_disciplina, buscar_questoes_filtradas, salvar_resultado_prova, 
+    detectar_duplicata, buscar_questoes_proximas, excluir_questao
+)
+
+# 3. A PRIMEIRA linha de comando Streamlit (obrigatório ser a primeira)
+st.set_page_config(page_title="Meu Estudei - FAM", page_icon="🎓", layout="wide")
+def mostrar_tela_login():
+    st.image("https://api.dicebear.com/9.x/shapes/svg?seed=MeuEstudei", width=100)
     st.title("🔐 Acesso Restrito - FAM")
-    st.markdown("Bem-vindo ao sistema de gestão de provas e turmas.")
+    st.markdown("Bem-vindo ao sistema de gestão de provas e turmas da Profª Mariana.")
 
-    # Dicionário de professores e senhas para o seu teste Beta:
     usuarios_permitidos = {
         "mariana": "senha123",
-        "joao": "teste123",
-        "ana": "teste123"
+        "joao": "fam2026",
+        "ana": "fam2026"
     }
 
     with st.form("login_form"):
         user = st.text_input("Usuário").lower().strip()
         pw = st.text_input("Senha", type="password")
-        submit = st.form_submit_button("Entrar no Sistema", use_container_width=True)
-
-        if submit:
+        if st.form_submit_button("Entrar no Sistema", use_container_width=True):
             if user in usuarios_permitidos and usuarios_permitidos[user] == pw:
-                # 1. Salva quem logou
                 st.session_state.usuario_logado = user
                 
-                with st.spinner("Baixando seus dados da nuvem... ☁️"):
-                    # 2. Vai no Supabase e baixa o 'pendrive' (o banco.db)
-                    baixar_banco_do_cofre()
-                    # 3. Garante que o banco tem as tabelas se for a primeira vez
-                    criar_base_de_dados()
-                
+                with st.spinner("Buscando seus dados no cofre... ☁️"):
+                    baixar_banco_do_cofre() # Puxa o seu arquivo .db
+                    criar_base_de_dados()   # Garante que as tabelas estão lá
                 st.rerun()
             else:
                 st.error("⚠️ Usuário ou senha incorretos.")
-
-# =========================================================================
-# --- VERIFICAÇÃO DE ACESSO ---
-# =========================================================================
-# Se não estiver logado, mostra a tela de login e PARA de ler o resto do código
 if "usuario_logado" not in st.session_state:
-    tela_login()
-    st.stop() 
+    mostrar_tela_login() # <--- Aqui tem 1 TAB de espaço
+    st.stop()            # <--- Aqui também tem 1 TAB                
 
 # =========================================================================
 # SE CHEGOU AQUI, O PROFESSOR ESTÁ LOGADO!
@@ -89,20 +64,22 @@ if "usuario_logado" not in st.session_state:
 
 # --- NO MENU LATERAL (ADICIONE O BOTÃO DE SALVAR) ---
 with st.sidebar:
-    st.success(f"Logado como: **Prof. {st.session_state.usuario_logado.capitalize()}**")
+    # --- NOVO BLOCO DE CONTROLE (Passo 4) ---
+    st.success(f"📌 **Prof. {st.session_state.usuario_logado.capitalize()}**")
     
-    # Este é o botão MÁGICO que manda o pendrive de volta pra nuvem!
-    if st.button("☁️ Salvar Tudo na Nuvem", type="primary", use_container_width=True):
-        with st.spinner("Guardando dados seguros no cofre..."):
-            salvar_banco_no_cofre()
-        st.success("Tudo salvo com sucesso!")
-        
-    if st.button("Sair (Logout)", use_container_width=True):
-        # Salva antes de sair por segurança
-        salvar_banco_no_cofre()
+    # Botão para salvar na nuvem
+    if st.button("☁️ Salvar Alterações na Nuvem", type="primary", use_container_width=True):
+        with st.spinner("Sincronizando com o cofre..."):
+            salvar_banco_no_cofre() # Essa função está lá no seu db.py
+        st.toast("Dados salvos com sucesso!", icon="✅")
+
+    # Botão para sair
+    if st.button("🚪 Sair (Logout)", use_container_width=True):
+        salvar_banco_no_cofre() # Salva automaticamente antes de fechar
         del st.session_state.usuario_logado
         st.rerun()
-    st.markdown("---")
+    
+    st.divider() # Uma linha para separar do seu menu original
 
 # ... (continua com as suas abas: aba_correcao, aba_turmas, etc.) ...
 # =========================================================================

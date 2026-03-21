@@ -6,7 +6,41 @@ import shutil
 import random
 from datetime import datetime
 from difflib import SequenceMatcher
+import streamlit as st
+from supabase import create_client
 
+# 2. ADICIONE logo abaixo dos imports a conexão com o cofre:
+try:
+    URL = st.secrets["SUPABASE_URL"]
+    KEY = st.secrets["SUPABASE_KEY"]
+    supabase = create_client(URL, KEY)
+except:
+    supabase = None
+def get_db_name():
+    """Descobre o nome do arquivo. Se for a Mariana logada, será banco_mariana.db"""
+    if "usuario_logado" in st.session_state:
+        return f"banco_{st.session_state.usuario_logado}.db"
+    return "banco_provas.db"
+
+def baixar_banco_do_cofre():
+    """Traz o arquivo do Supabase para o Streamlit"""
+    if not supabase: return
+    nome_arquivo = get_db_name()
+    try:
+        res = supabase.storage.from_("bancos-sqlite").download(nome_arquivo)
+        with open(nome_arquivo, "wb") as f:
+            f.write(res)
+    except: pass
+
+def salvar_banco_no_cofre():
+    """Leva o arquivo do Streamlit para o Supabase"""
+    if not supabase: return
+    nome_arquivo = get_db_name()
+    if os.path.exists(nome_arquivo):
+        with open(nome_arquivo, "rb") as f:
+            supabase.storage.from_("bancos-sqlite").upload(
+                file=f, path=nome_arquivo, file_options={"x-upsert": "true"}
+            )
 # =========================================================================
 # --- MANUTENÇÃO E BACKUP ---
 # =========================================================================
@@ -26,7 +60,7 @@ def backup_para_icloud():
         if not os.path.exists(pasta_icloud): os.makedirs(pasta_icloud)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         destino = os.path.join(pasta_icloud, f"backup_provas_{timestamp}.db")
-        banco_original = sqlite3.connect('banco_provas.db')
+        banco_original = sqlite3.connect(get_db_name())
         banco_backup = sqlite3.connect(destino)
         with banco_backup: banco_original.backup(banco_backup)
         banco_backup.close()
@@ -37,7 +71,7 @@ def backup_para_icloud():
         return False
 
 def obter_estatisticas_questoes(disciplina):
-    conexao = sqlite3.connect('banco_provas.db')
+    conexao = sqlite3.connect(get_db_name())
     cursor = conexao.cursor()
     cursor.execute('SELECT tipo, COUNT(*) FROM questoes WHERE disciplina = ? GROUP BY tipo', (disciplina,))
     stats = cursor.fetchall()
@@ -48,7 +82,7 @@ def obter_estatisticas_questoes(disciplina):
 # --- BASE DE DADOS E QUERIES ---
 # =========================================================================
 def criar_base_de_dados():
-    with sqlite3.connect('banco_provas.db') as conn:
+    with sqlite3.connect(get_db_name()) as conn:
         cursor = conn.cursor()
         
         # 1. Tabelas de Provas e Questões
@@ -103,7 +137,7 @@ def criar_base_de_dados():
 
 def limpar_dados_teste():
     tabelas_para_limpar = ['resultados', 'correcoes_detalhadas', 'logs_comportamento', 'diario', 'atividades_sala']
-    with sqlite3.connect('banco_provas.db') as conn:
+    with sqlite3.connect(get_db_name()) as conn:
         cursor = conn.cursor()
         for tabela in tabelas_para_limpar:
             try: cursor.execute(f"DELETE FROM {tabela}")
@@ -112,7 +146,7 @@ def limpar_dados_teste():
     return True
 
 def inserir_questao(disc, ass, dif, enun, alts, pts, tipo, gab_disc=None, img=None, espaco="Linhas", espaco_linhas=4, gab_img=None, uso_quest="Prova Oficial"):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         try: cursor.execute("ALTER TABLE questoes ADD COLUMN uso_quest TEXT DEFAULT 'Prova Oficial'")
         except: pass
@@ -125,7 +159,7 @@ def inserir_questao(disc, ass, dif, enun, alts, pts, tipo, gab_disc=None, img=No
         conexao.commit()
 
 def buscar_e_embaralhar_alternativas(q_id):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         cursor.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ?', (q_id,))
         alts = cursor.fetchall()
@@ -133,41 +167,41 @@ def buscar_e_embaralhar_alternativas(q_id):
     return alts
 
 def buscar_alternativas_originais(q_id):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         cursor.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ? ORDER BY id', (q_id,))
         alts = cursor.fetchall()
     return alts
 
 def carregar_configuracoes():
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         cursor.execute('SELECT instituicao, professor, departamento, curso, instrucoes FROM configuracoes WHERE id = 1')
         res = cursor.fetchone()
     return res
 
 def salvar_configuracoes(inst, prof, dep, curso, instr):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         cursor.execute('''UPDATE configuracoes SET instituicao=?, professor=?, departamento=?, curso=?, instrucoes=? WHERE id=1''', (inst, prof, dep, curso, instr))
         conexao.commit()
 
 def excluir_questao(q_id):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         cursor.execute('DELETE FROM alternativas WHERE questao_id = ?', (q_id,))
         cursor.execute('DELETE FROM questoes WHERE id = ?', (q_id,))
         conexao.commit()
 
 def obter_assuntos_da_disciplina(disciplina):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         cursor.execute('SELECT DISTINCT assunto FROM questoes WHERE disciplina = ? AND assunto IS NOT NULL AND assunto != "" ORDER BY assunto', (disciplina,))
         res = [r[0] for r in cursor.fetchall()]
     return ["Todos"] + res
 
 def buscar_questoes_filtradas(disciplina, limite=None, assunto="Todos", dificuldade="Todos", tipo="Todos", sortear=False, excluir_ids=None, uso="Todos"):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         try: cursor.execute("ALTER TABLE questoes ADD COLUMN uso_quest TEXT DEFAULT 'Prova Oficial'")
         except: pass
@@ -191,7 +225,7 @@ def buscar_questoes_filtradas(disciplina, limite=None, assunto="Todos", dificuld
     return q
 
 def salvar_resultado_prova(nome, ra, disc, versao, nota, avaliacao="P1"):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         cursor.execute("PRAGMA table_info(resultados)")
@@ -208,14 +242,14 @@ def salvar_resultado_prova(nome, ra, disc, versao, nota, avaliacao="P1"):
     backup_para_icloud()
 
 def salvar_feedback_detalhado(ra, disc, prova, q_num, status, feedback):
-    with sqlite3.connect('banco_provas.db') as conn:
+    with sqlite3.connect(get_db_name()) as conn:
         conn.execute("DELETE FROM correcoes_detalhadas WHERE aluno_ra=? AND disciplina=? AND prova_nome=? AND questao_num=?", (ra, disc, prova, q_num))
         conn.execute('''INSERT INTO correcoes_detalhadas (aluno_ra, disciplina, prova_nome, questao_num, status, feedback_ia) 
                         VALUES (?, ?, ?, ?, ?, ?)''', (ra, disc, prova, q_num, status, feedback))
         conn.commit()
 
 def detectar_duplicata(enunciado, disciplina):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         cursor.execute('SELECT id FROM questoes WHERE enunciado = ? AND disciplina = ?', (enunciado, disciplina))
         resultado = cursor.fetchone()
@@ -225,7 +259,7 @@ def calcular_percentual_similaridade(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 def buscar_questoes_proximas(enunciado_novo, disciplina, limite=0.8):
-    with sqlite3.connect('banco_provas.db') as conexao:
+    with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
         cursor.execute('SELECT id, enunciado FROM questoes WHERE disciplina = ?', (disciplina,))
         questoes_existentes = cursor.fetchall()
