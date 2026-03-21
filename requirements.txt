@@ -1,7 +1,7 @@
 streamlit
 pandas
 openpyxl
-opencv-python
+opencv-python-headless
 qrcode
 jinja2
 supabase
