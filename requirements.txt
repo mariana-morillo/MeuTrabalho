@@ -8,3 +8,6 @@ supabase
 plotly
 holidays
 numpy
+pyzbar
+Pillow
+matplotlib
