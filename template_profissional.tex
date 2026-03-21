@@ -1,0 +1,226 @@
+\documentclass[addpoints, 12pt]{exam}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage[export]{adjustbox} 
+\usepackage{tikz}
+\usepackage{tabularx} 
+\usepackage{multicol} 
+\usepackage{amsmath, amssymb}
+\usepackage{enumitem}         % Ajuda a controlar melhor as listas se necessário
+
+% --- CONFIGURAÇÕES DAS COLUNAS ---
+\setlength{\columnsep}{1cm}       
+\setlength{\columnseprule}{0.4pt} 
+% MARGENS
+\geometry{left=1cm, right=1cm, top=1cm, bottom=2cm}
+
+% 👇 COLE ESTE BLOCO AQUI 👇
+% --- CONFIGURAÇÕES DE RODAPÉ (CÓDIGO SECRETO) ---
+\pagestyle{foot}
+\firstpagefooter{}{\small \texttt{Código de Verificação: << codigo_secreto >>}}{Pág. \thepage}
+\runningfooter{}{\small \texttt{Código de Verificação: << codigo_secreto >>}}{Pág. \thepage}
+
+\begin{document}
+
+<% for _ in range(num_copias) %>
+% --- 1. CABEÇALHO ESTILO ENGENHARIA ---
+\noindent
+% --- BLOCO 1: LOGO (18% da largura) ---
+\begin{minipage}[t]{0.18\textwidth}
+    \vspace{0pt}
+    \fbox{\begin{minipage}[c][3.2cm][c]{\dimexpr\linewidth-2\fboxsep-2\fboxrule}
+    \centering
+        \includegraphics[width=0.95\linewidth, height=3cm, keepaspectratio]{<< logo_path >>}
+    \end{minipage}}
+\end{minipage}%
+\hfill
+% --- BLOCO 2: TEXTOS (58% da largura) ---
+\begin{minipage}[t]{0.58\textwidth}
+    \vspace{0pt} 
+    {\large \textbf{<< instituicao >>}} \\[0.15cm]
+    Professor(a): << professor_nome >> \\[0.1cm]
+    Disciplina: << disciplina_nome >> \hrulefill \\[0.1cm]
+    Curso: << curso >> \hrulefill \\[0.1cm]
+    <% if aluno_nome %>
+        \textbf{Aluno(a):} << aluno_nome >> \hrulefill \\[0.1cm]
+        \textbf{RA:} << aluno_ra >> \hfill Turma: << turma >> \rule{4cm}{0.1pt}
+    <% else %>
+        Aluno(a): \hrulefill \\[0.1cm]
+        RA: \rule{4cm}{0.1pt} \hfill Turma: << turma >> \rule{4cm}{0.1pt}
+    <% endif %>
+\end{minipage}%
+\hfill
+% --- BLOCO 3: NOTA e DATA (20% da largura) ---
+\begin{minipage}[t]{0.20\textwidth}
+    \vspace{0pt}
+    % Caixa da nota limpa para preenchimento manual
+    \fbox{\begin{minipage}[t][2.5cm][t]{\dimexpr\linewidth-2\fboxsep-2\fboxrule}
+        \centering \vspace{0.2cm}
+        \textbf{Nota}
+    \end{minipage}}
+    \vspace{0.2cm} \\
+    Data: << data >>\hrulefill \\[0.1cm]
+    
+\end{minipage}
+
+\vspace{0.4cm}
+% --- TÍTULO EM DESTAQUE ---
+\vspace{0.4cm}
+\begin{center}
+    {\Huge \textbf{<< titulo_documento >>}} % Título bem grande e negrito
+    \\[0.2cm] \hrule % 👈 Adiciona uma linha horizontal elegante
+\end{center}
+\vspace{0.2cm}
+% --------------------------
+
+% --- INSTRUÇÕES ---
+\noindent\fbox{\begin{minipage}{\dimexpr\linewidth-2\fboxsep-2\fboxrule}
+    \textbf{Instruções:}\\[0.2em]
+    << instrucoes_texto >>
+\end{minipage}}
+
+\vspace{0.5cm}
+
+% --- 2. QUESTÕES ---
+<% if colunas == 2 %>
+\begin{multicols}{2}
+<% endif %>
+\begin{questions}
+<% for q in questoes %>
+    \question \textbf{(<< q.pontos >> pontos)} << q.enunciado >>
+
+    <% if q.imagem %>
+    \begin{center}
+        \includegraphics[max width=0.95\linewidth, max height=8cm, keepaspectratio]{<< q.imagem >>}
+    \end{center}
+    <% endif %>
+
+    <% if q.alternativas %>
+    \begin{choices}
+        <% for alt in q.alternativas %>
+        \choice << alt.texto >>
+        <% if alt.imagem %>
+        \par \includegraphics[max width=0.85\linewidth, max height=4cm, keepaspectratio]{<< alt.imagem >>}
+        <% endif %>
+        <% endfor %>
+    \end{choices}
+    <% endif %>
+
+    <% if q.tipo == "Discursiva" or q.tipo == "Numérica" %>
+        \vspace{0.3cm}
+        <% if q.espaco == "Linhas" %>
+            \fillwithlines{<< q.espaco_linhas >>cm}
+        <% elif q.espaco == "Quadriculado" %>
+            \fillwithgrid{<< q.espaco_linhas >>cm}
+        <% elif q.espaco == "Caixa Vazia" %>
+            \makeemptybox{<< q.espaco_linhas >>cm}
+        <% endif %>
+    <% endif %>
+    \vspace{0.4cm}
+<% endfor %>
+\end{questions}
+<% if colunas == 2 %>
+\end{multicols}
+<% endif %>
+
+% --- 3. CARTÃO RESPOSTA (Otimizado para OpenCV) ---
+\newpage
+\begin{center} \textbf{\huge CARTÃO RESPOSTA OFICIAL} \end{center}
+
+% 4 Quadrados pretos nos cantos
+\begin{tikzpicture}[remember picture, overlay]
+    \node at ([shift={(1.5cm,-1.5cm)}]current page.north west) {\rule{0.8cm}{0.8cm}};
+    \node at ([shift={(-1.5cm,-1.5cm)}]current page.north east) {\rule{0.8cm}{0.8cm}};
+    \node at ([shift={(1.5cm,1.5cm)}]current page.south west) {\rule{0.8cm}{0.8cm}};
+    \node at ([shift={(-1.5cm,1.5cm)}]current page.south east) {\rule{0.8cm}{0.8cm}};
+\end{tikzpicture}
+
+\vspace{0.5cm}
+
+% CAIXA DE IDENTIFICAÇÃO (LIMPA E SEM VERSÃO DA PROVA)
+\begin{center}
+\begin{tabular}{|p{0.45\textwidth}|p{0.5\textwidth}|}
+    \hline
+    \begin{center}
+        \vspace{0.2cm}
+        \includegraphics[width=3.5cm]{<< qr_path >>}
+        \vspace{0.2cm}
+    \end{center} &
+    
+    \begin{center}
+        \vspace{0.2cm}
+        \textbf{\large IDENTIFICAÇÃO DO ALUNO}
+        
+        \vspace{0.8cm}
+        \textbf{\footnotesize NOME:} \\
+        \large << aluno_nome >>
+        
+        \vspace{0.8cm}
+        \textbf{\footnotesize RA:} \\
+        \large << aluno_ra >>
+        \vspace{0.6cm}
+    \end{center} \\
+    \hline
+\end{tabular}
+\end{center}
+
+\vspace{1cm}
+\begin{center}
+\fbox{
+\begin{minipage}{0.8\textwidth}
+    \centering\fontsize{8}{10}\sffamily
+    \textbf{Instruções para Questões Numéricas:} \\
+    O primeiro bloco de bolinhas representa a \textbf{Dezena} e o segundo a \textbf{Unidade}. \\
+    Exemplo: Para a resposta \textbf{42}, marque o (4) no primeiro bloco e o (2) no segundo.
+\end{minipage}
+}
+\end{center}
+
+\begin{center}
+    \textbf{\Large RESPOSTAS OBJETIVAS} \\ \vspace{0.4cm}
+    \renewcommand{\arraystretch}{2} % Aumenta bem o espaço entre as linhas
+    
+   % TABELA DAS BOLINHAS (ALINHAMENTO MATEMÁTICO PERFEITO)
+    \begin{tabular}{c c l}
+        <% for q in questoes %>
+        <% if q.tipo in ['Múltipla Escolha', 'Verdadeiro ou Falso', 'Numérica'] %>
+            $\vcenter{\hbox{\textbf{\large << loop.index >>.}}}$ & 
+            $\vcenter{\hbox{\rule{0.25cm}{0.25cm}}}$ & 
+            $\vcenter{\hbox{
+            <% if q.tipo == 'Numérica' %>
+                \begin{tikzpicture}
+                    % Bloco da DEZENA
+                    \foreach \n in {0,...,9} { 
+                        \draw[black!50, thin] (0.45*\n, 0) circle (0.16) node[text=black] {\sffamily\fontsize{5}{6}\selectfont \n}; 
+                    }
+                    % Ponto separador
+                    \node at (4.4, 0) {\small $\cdot$};
+                    % Bloco da UNIDADE
+                    \foreach \n in {0,...,9} { 
+                        \draw[black!50, thin] (4.7 + 0.45*\n, 0) circle (0.16) node[text=black] {\sffamily\fontsize{5}{6}\selectfont \n}; 
+                    }
+                \end{tikzpicture}
+            <% elif q.tipo == 'Verdadeiro ou Falso' %>
+                \begin{tikzpicture}
+                    \draw[black!50, thin] (0, 0) circle (0.16) node[text=black] {\sffamily\fontsize{5}{6}\selectfont V};
+                    \draw[black!50, thin] (0.45, 0) circle (0.16) node[text=black] {\sffamily\fontsize{5}{6}\selectfont F};
+                \end{tikzpicture}
+            <% else %> % Múltipla Escolha
+                \begin{tikzpicture}
+                    \foreach \l [count=\i from 0] in {A,B,C,D,E} {
+                        \draw[black!50, thin] (0.45*\i, 0) circle (0.16) node[text=black] {\sffamily\fontsize{5}{6}\selectfont \l};
+                    }
+                \end{tikzpicture}
+            <% endif %>
+            }}$ \\
+        <% endif %>
+        <% endfor %>
+    \end{tabular}
+\end{center}
+
+<% if not loop.last %>\newpage<% endif %>
+<% endfor %>
+\end{document}

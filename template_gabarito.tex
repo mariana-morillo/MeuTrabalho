@@ -1,0 +1,82 @@
+\documentclass[12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage[export]{adjustbox} 
+\usepackage{amsmath, amssymb}
+\usepackage{fancyhdr}
+
+% Configurações de layout
+\geometry{a4paper, margin=1.5cm, top=2.5cm, bottom=2cm}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textbf{Gabarito Oficial}}
+\rhead{Versão: << versao_letra >>}
+\cfoot{Página \thepage}
+
+\begin{document}
+
+% --- 1. CABEÇALHO COM LOGO (EXATAMENTE O SEU ORIGINAL) ---
+\noindent
+\begin{minipage}{0.2\textwidth}
+    \includegraphics[width=\textwidth, height=2.5cm, keepaspectratio]{<< logo_path >>}
+\end{minipage}
+\begin{minipage}{0.75\textwidth}
+    \centering
+    \textbf{\Large << instituicao >>} \\
+    \textbf{Disciplina:} << disciplina_nome >> \\
+    \textbf{Profra:} << professor_nome >>
+
+\end{minipage}
+
+\vspace{0.4cm}
+\hrule
+\begin{center}
+    \textbf{\Large GABARITO E RESOLUÇÃO ESPERADA} \\
+    \vspace{0.3cm}
+    {\Huge \textbf{<< titulo_documento >>}} % Destaque para o Gabarito também
+\end{center}
+\hrule
+
+\vspace{0.8cm}
+
+% --- 2. LOOP DE QUESTÕES INTELIGENTE ---
+<% for q in questoes %>
+\noindent \textbf{Questão << loop.index >>} (<< q.pontos >> pts) - \textit{<< q.tipo >>}: 
+
+\vspace{0.2cm}
+
+% Se for Múltipla Escolha ou VF, mostra as alternativas marcando a certa
+<% if q.tipo == "Múltipla Escolha" or q.tipo == "Verdadeiro ou Falso" %>
+    \begin{itemize}
+    <% for alt in q.alternativas %>
+        \item [<% if alt.correta %>$\blacksquare$<% else %>$\square$<% endif %>] 
+        <% if alt.correta %>\textbf{<< alt.texto >>}<% else %><< alt.texto >><% endif %>
+    <% endfor %>
+    \end{itemize}
+<% endif %>
+
+% Texto da Resolução/Gabarito Discursivo
+<% if q.resposta_esperada %>
+    \noindent \textbf{Resolução:} \\
+    << q.resposta_esperada >>
+<% endif %>
+
+% Imagem da Resolução (se existir)
+<% if q.gabarito_imagem %>
+\begin{center}
+    \vspace{0.3cm}
+    \textbf{\small Resolução Visual/Cálculo:} \\
+    \vspace{0.2cm}
+    \includegraphics[max width=0.85\textwidth, max height=10cm, keepaspectratio]{<< q.gabarito_imagem >>}
+\end{center}
+<% endif %>
+
+\vspace{0.5cm}
+\hrule
+\vspace{0.5cm}
+<% endfor %>
+
+\end{document}
