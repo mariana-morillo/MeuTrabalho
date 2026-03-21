@@ -6,3 +6,5 @@ qrcode
 jinja2
 supabase
 plotly
+holidays
+numpy
