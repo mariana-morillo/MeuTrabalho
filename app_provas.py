@@ -36,8 +36,9 @@ def mostrar_tela_login():
 
     usuarios_permitidos = {
         "mariana": "senha123",
-        "joao": "fam2026",
-        "ana": "fam2026"
+        "junior": "fam2026",
+        "samara": "fam2026",
+        "feu": "fam2026"
     }
 
     with st.form("login_form"):
