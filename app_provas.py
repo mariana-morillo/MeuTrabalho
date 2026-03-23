@@ -38,9 +38,9 @@ def mostrar_tela_login():
         "mariana": "senha123",
         "junior": "fam2026",
         "samara": "fam2026",
-        "Alfredo": "fam2026",
-        "Edemar": "veidalancha",
-        "Andre": "cornomanso"
+        "alfredo": "fam2026",
+        "edemar": "veidalancha",
+        "andre": "cornomanso"
     }
 
     with st.form("login_form"):
