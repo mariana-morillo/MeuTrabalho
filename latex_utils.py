@@ -68,9 +68,9 @@ def configurar_jinja():
 def compilar_latex_mac(caminho_tex):
     caminho_pdf = caminho_tex.replace('.tex', '.pdf')
     try:
-        # Trocamos o caminho fixo do Mac apenas pelo comando universal 'pdflatex'
+        # A MÁGICA AQUI: adicionamos encoding='utf-8', errors='replace'
         resultado = subprocess.run(['pdflatex', '-interaction=nonstopmode', caminho_tex], 
-                                   capture_output=True, text=True)
+                                   capture_output=True, text=True, encoding='utf-8', errors='replace')
         
         st.session_state.latex_log = f"--- LOG DE {caminho_tex} ---\n" + resultado.stdout + "\n" + resultado.stderr
         
