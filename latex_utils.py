@@ -68,18 +68,26 @@ def configurar_jinja():
 def compilar_latex_mac(caminho_tex):
     caminho_pdf = caminho_tex.replace('.tex', '.pdf')
     try:
-        # A MÁGICA AQUI: adicionamos encoding='utf-8', errors='replace'
+        import subprocess
+        # Tiramos o text=True. Vamos pegar os dados brutos (bytes)
         resultado = subprocess.run(['pdflatex', '-interaction=nonstopmode', caminho_tex], 
-                                   capture_output=True, text=True, encoding='utf-8', errors='replace')
+                                   capture_output=True)
         
-        st.session_state.latex_log = f"--- LOG DE {caminho_tex} ---\n" + resultado.stdout + "\n" + resultado.stderr
+        # Decodificamos 'na marra', ignorando qualquer caractere problemático
+        log_stdout = resultado.stdout.decode('utf-8', errors='ignore') if resultado.stdout else ""
+        log_stderr = resultado.stderr.decode('utf-8', errors='ignore') if resultado.stderr else ""
+        
+        import streamlit as st
+        st.session_state.latex_log = f"--- LOG DE {caminho_tex} ---\n" + log_stdout + "\n" + log_stderr
         
         if os.path.exists(caminho_pdf): 
             return True
         else:
             st.error(f"⚠️ O PDF não foi gerado. Olhe o Log na barra lateral para ver o motivo!")
             return False
+            
     except Exception as e:
+        import streamlit as st
         st.session_state.latex_log = f"ERRO CRÍTICO DO SISTEMA:\n{str(e)}"
         st.error(f"🚫 Falha ao tentar chamar o LaTeX: {e}")
         return False
