@@ -29,7 +29,7 @@ from db import (
 )
 
 # 3. A PRIMEIRA linha de comando Streamlit (obrigatório ser a primeira)
-st.set_page_config(page_title="Meu Estudei - FAM", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Meu Estudei - FAM", page_icon="🎓", layout="wide", initial_sidebar_state="collapsed")
 def mostrar_tela_login():
     st.image("https://api.dicebear.com/9.x/shapes/svg?seed=MeuEstudei", width=100)
     st.title("🔐 Acesso Restrito - FAM")
@@ -145,7 +145,7 @@ def injetar_texto(comando, target_key):
 # --- 3. INICIALIZAÇÃO DA INTERFACE (STREAMLIT) ---
 # =========================================================================
 criar_base_de_dados()
-st.set_page_config(page_title="Gerador da Mari", layout="wide", initial_sidebar_state="collapsed")
+
 # === 🎨 AJUSTE DE DESIGN PROFISSIONAL CALIBRADO (CSS) ===
 st.markdown("""
     <style>
