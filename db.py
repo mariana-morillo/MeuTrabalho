@@ -146,16 +146,25 @@ def limpar_dados_teste():
     return True
 
 def inserir_questao(disc, ass, dif, enun, alts, pts, tipo, gab_disc=None, img=None, espaco="Linhas", espaco_linhas=4, gab_img=None, uso_quest="Prova Oficial"):
-    with sqlite3.connect(get_db_name()) as conexao:
+    # Adicionamos timeout=15 para o banco "esperar na fila" a outra conexão fechar
+    with sqlite3.connect(get_db_name(), timeout=15, check_same_thread=False) as conexao:
         cursor = conexao.cursor()
-        try: cursor.execute("ALTER TABLE questoes ADD COLUMN uso_quest TEXT DEFAULT 'Prova Oficial'")
-        except: pass
+        
+        # Executamos o ALTER TABLE com um try/except específico para não quebrar a transação
+        try: 
+            cursor.execute("ALTER TABLE questoes ADD COLUMN uso_quest TEXT DEFAULT 'Prova Oficial'")
+        except sqlite3.OperationalError: 
+            pass # Ignora silenciosamente se a coluna já existir
         
         cursor.execute('''INSERT INTO questoes (disciplina, assunto, dificuldade, enunciado, imagem, pontos, tipo, gabarito_discursivo, espaco_resposta, espaco_linhas, gabarito_imagem, uso_quest) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (disc, ass, dif, enun, img, float(pts), tipo, gab_disc, espaco, int(espaco_linhas), gab_img, uso_quest))
+        
         q_id = cursor.lastrowid
+        
         if tipo in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
             for txt, corr, img_alt in alts:
-                cursor.execute('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (?, ?, ?, ?)', (q_id, txt, corr, img_alt))
+                # Garantimos que o booleano de correção vire 1 ou 0 para o banco não se confundir
+                cursor.execute('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (?, ?, ?, ?)', (q_id, txt, int(corr), img_alt))
+        
         conexao.commit()
 
 def buscar_e_embaralhar_alternativas(q_id):
@@ -187,7 +196,8 @@ def salvar_configuracoes(inst, prof, dep, curso, instr):
         conexao.commit()
 
 def excluir_questao(q_id):
-    with sqlite3.connect(get_db_name()) as conexao:
+    # Mesma trava de segurança adicionada aqui
+    with sqlite3.connect(get_db_name(), timeout=15, check_same_thread=False) as conexao:
         cursor = conexao.cursor()
         cursor.execute('DELETE FROM alternativas WHERE questao_id = ?', (q_id,))
         cursor.execute('DELETE FROM questoes WHERE id = ?', (q_id,))
