@@ -807,6 +807,7 @@ with aba_avaliacoes:
 
                     # O NOVO BOTÃO DE DUPLICAR AQUI:
                     if cb_d.button("💾 Salvar como Nova", use_container_width=True, help="Cria uma CÓPIA exata no banco (ideal para mudar valores)"):
+                        conn.close() # 🔴 ADICIONE ESTA LINHA AQUI! Libera o banco para o db.py
                         i_f = q_img
                         if n_img_up: 
                             i_f = sanitizar_nome(n_img_up.name)
@@ -836,6 +837,7 @@ with aba_avaliacoes:
                         st.rerun()
 
                     if cb_e.button("🗑️ Excluir Permanente", use_container_width=True):
+                        conn.close() # 🔴 ADICIONE ESTA LINHA AQUI TAMBÉM! Libera o banco para o db.py
                         excluir_questao(id_editar); st.warning("Excluída!"); st.rerun()
                 conn.close()
         else: st.info("O seu banco de questões ainda está vazio.")
