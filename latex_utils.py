@@ -66,10 +66,10 @@ def configurar_jinja():
     return jinja2.Environment(block_start_string='<%', block_end_string='%>', variable_start_string='<<', variable_end_string='>>', trim_blocks=True, autoescape=False, loader=jinja2.FileSystemLoader(os.path.abspath('.')))
 
 def compilar_latex_mac(caminho_tex):
-    caminho_mac = "/Library/TeX/texbin/pdflatex"
     caminho_pdf = caminho_tex.replace('.tex', '.pdf')
     try:
-        resultado = subprocess.run([caminho_mac, '-interaction=nonstopmode', caminho_tex], 
+        # Trocamos o caminho fixo do Mac apenas pelo comando universal 'pdflatex'
+        resultado = subprocess.run(['pdflatex', '-interaction=nonstopmode', caminho_tex], 
                                    capture_output=True, text=True)
         
         st.session_state.latex_log = f"--- LOG DE {caminho_tex} ---\n" + resultado.stdout + "\n" + resultado.stderr
