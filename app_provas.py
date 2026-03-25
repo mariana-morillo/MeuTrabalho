@@ -19,7 +19,8 @@ from turmas import renderizar_aba_turmas
 
 # 2. O COMBO COMPLETO E REVISADO DO DB.PY (Agora com excluir_questao!)
 from db import (
-    baixar_banco_do_cofre, salvar_banco_no_cofre, criar_base_de_dados, 
+    
+    get_db_name, baixar_banco_do_cofre, salvar_banco_no_cofre, criar_base_de_dados, 
     carregar_configuracoes, salvar_configuracoes, criar_backup_banco, 
     backup_para_icloud, obter_estatisticas_questoes, limpar_dados_teste, 
     inserir_questao, buscar_e_embaralhar_alternativas, buscar_alternativas_originais, 
@@ -219,7 +220,7 @@ with st.sidebar:
     with st.popover("🐞 Reportar Erro aos Desenvolvedores"):
         msg_erro = st.text_area("O que aconteceu?")
         if st.button("Enviar Relato"):
-            with sqlite3.connect('banco_provas.db') as conn:
+            with sqlite3.connect(get_db_name()) as conn:
                 conn.execute("CREATE TABLE IF NOT EXISTS bugs (id INTEGER PRIMARY KEY, msg TEXT, data TEXT)")
                 conn.execute("INSERT INTO bugs (msg, data) VALUES (?,?)", (msg_erro, datetime.now().strftime("%d/%m %H:%M")))
             st.success("Relato salvo! Vou analisar em breve.")
@@ -557,7 +558,7 @@ with aba_avaliacoes:
 
     # --- SUB-ABA 1.2: EDITAR BANCO ---
     with sub_edit:
-        conn = sqlite3.connect('banco_provas.db')
+        conn = sqlite3.connect(get_db_name())
         df_todas = pd.read_sql('SELECT id, disciplina, assunto, dificuldade, tipo, enunciado FROM questoes ORDER BY id DESC', conn)
         conn.close()
         st.markdown("**🔍 Filtro**")
@@ -578,7 +579,7 @@ with aba_avaliacoes:
                 st.write("---")
                 st.markdown("**⚙️ Configuração**")
                 id_editar = int(q_sel.split(" | ")[0].replace("ID ", ""))
-                conn = sqlite3.connect('banco_provas.db')
+                conn = sqlite3.connect(get_db_name())
                 c = conn.cursor()
                 
                 # --- MIGRATION DE SEGURANÇA: Cria a coluna nas questões antigas se ela não existir ---
@@ -909,7 +910,7 @@ with aba_avaliacoes:
         elif modo_id == "Upload Temporário de Lista":
             arquivo_lista = st.file_uploader("Upload da Lista", type=['xlsx', 'csv'], key="up_lista_alunos")
         elif modo_id == "Usar Turma Cadastrada":
-            conn = sqlite3.connect('banco_provas.db')
+            conn = sqlite3.connect(get_db_name())
             turmas_db = pd.read_sql('SELECT * FROM turmas', conn)
             if not turmas_db.empty:
                 t_escolhida = st.selectbox("Escolha a Turma:", turmas_db['nome'].tolist())
@@ -1054,7 +1055,7 @@ with aba_avaliacoes:
                         st.caption("⚠️ Atenção: Edições nas alternativas SÓ vão para o PDF se você clicar em 'Atualizar no Banco' abaixo.")
                         
                         import sqlite3
-                        with sqlite3.connect('banco_provas.db') as c_temp:
+                        with sqlite3.connect(get_db_name()) as c_temp:
                             cursor_t = c_temp.cursor()
                             cursor_t.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ? ORDER BY id', (q['id'],))
                             alts_q_adj = cursor_t.fetchall()
@@ -1116,7 +1117,7 @@ with aba_avaliacoes:
 
                     elif q['tipo'] == "Verdadeiro ou Falso":
                         import sqlite3
-                        with sqlite3.connect('banco_provas.db') as c_temp:
+                        with sqlite3.connect(get_db_name()) as c_temp:
                             cursor_t = c_temp.cursor()
                             cursor_t.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ? ORDER BY id', (q['id'],))
                             alts_q_adj = cursor_t.fetchall()
@@ -1199,7 +1200,7 @@ with aba_avaliacoes:
                     novo_pt = c_e1.number_input("Pontos", value=float(q['pontos']), step=0.5, key=f"prev_pt_gen_{i}")
                     
                     if c_e2.button("🆙 Atualizar", key=f"sv_banco_{i}_{q['id']}", use_container_width=True):
-                        with sqlite3.connect('banco_provas.db') as conn_upd:
+                        with sqlite3.connect(get_db_name()) as conn_upd:
                             conn_upd.execute("UPDATE questoes SET enunciado=?, pontos=?, imagem=?, gabarito_imagem=?, gabarito_discursivo=? WHERE id=?", 
                                              (novo_enun, novo_pt, img_temp, img_gab_temp, novo_gab, q['id']))
                             
