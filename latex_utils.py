@@ -59,7 +59,8 @@ def gerar_preview_web(texto):
     t = t.replace(r'\end{itemize}', '')
     t = t.replace(r'\begin{enumerate}', '')
     t = t.replace(r'\end{enumerate}', '')
-    t = re.sub(r'\\item\s+', r'* ', t)
+    # Engole qualquer espaço/tabulação antes do \item e força pular uma linha
+    t = re.sub(r'\s*\\item\s+', r'\n* ', t)
     
     # 4. Mantém o aviso visual da Tabela
     t = re.sub(r'\\begin\{tabular\}.*?\\end\{tabular\}', 
