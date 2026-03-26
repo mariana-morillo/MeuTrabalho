@@ -209,7 +209,9 @@ def carregar_configuracoes():
 def salvar_configuracoes(inst, prof, dep, curso, instr):
     with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
-        cursor.execute('''UPDATE configuracoes SET instituicao=?, professor=?, departamento=?, curso=?, instrucoes=? WHERE id=1''', (inst, prof, dep, curso, instr))
+        # O 'INSERT OR REPLACE' garante que ele crie a linha se ela não existir
+        cursor.execute('''INSERT OR REPLACE INTO configuracoes (id, instituicao, professor, departamento, curso, instrucoes)
+                          VALUES (1, ?, ?, ?, ?, ?)''', (inst, prof, dep, curso, instr))
         conexao.commit()
 
 def excluir_questao(q_id):

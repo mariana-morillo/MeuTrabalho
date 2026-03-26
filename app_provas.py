@@ -880,6 +880,7 @@ with aba_avaliacoes:
         cc1, cc2, cc3 = st.columns([0.4, 0.3, 0.3])
         if cc1.button("💾 Salvar como Padrão", use_container_width=True):
             salvar_configuracoes(inst_nome, prof_nome, depto, curs, instrucoes)
+            salvar_banco_no_cofre()
             st.success("✅ Cabeçalho salvo no banco de dados!")
             
         if cc2.button("🔄 Puxar do Banco", use_container_width=True):
