@@ -10,30 +10,18 @@ def sanitizar_nome(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return "".join([c for c in nfkd if not unicodedata.category(c).startswith('M')]).replace(" ", "_")
 
+import re
+
 def escapar_latex(texto):
-    if not texto: return ""
-    texto = texto.replace('\u200b', '') # Remove caracteres fantasmas
+    if not texto: 
+        return ""
+    texto = str(texto)
     
-    partes = re.split(r'(\$.*?\$|£.*?£)', texto, flags=re.DOTALL)
+    # O escudo inteligente: protege apenas o "%" e deixa os seus comandos de lista funcionarem!
+    texto = re.sub(r'(?<!\\)%', r'\%', texto)
     
-    resultado = []
-    for parte in partes:
-        if parte.startswith('$') and parte.endswith('$'):
-            resultado.append(parte) # É matemática
-        elif parte.startswith('£') and parte.endswith('£'):
-            resultado.append(parte[1:-1]) # É formatação de texto
-        else:
-            # Texto normal
-            mapa = {'&': r'\&', '%': r'\%', '#': r'\#', '_': r'\_', '{': r'\{', '}': r'\}', '\\': r'\textbackslash{}'}
-            for char, sub in mapa.items():
-                parte = parte.replace(char, sub)
-            resultado.append(parte)
-            
-    return "".join(resultado)
+    return texto
 
-import re
-
-import re
 
 def gerar_preview_web(texto):
     if not texto: 

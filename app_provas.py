@@ -1447,10 +1447,14 @@ with aba_avaliacoes:
                     }
                     env = configurar_jinja()
                     n_p = f"Prova_{sufixo_arquivo}"
+                    
+                    # 👇 A MÁGICA QUE MATA O "EFEITO CHICLETE" ENTRA AQUI 👇
                     conteudo_prova = env.get_template('template_profissional.tex').render(**cab, questoes=d_pdf)
                     conteudo_prova = conteudo_prova.replace("\\begin{document}", "\\raggedbottom\n\\begin{document}")
                     with open(f"{n_p}.tex", 'w', encoding='utf-8') as f: 
                         f.write(conteudo_prova)
+                    # 👆 ================================================= 👆
+                        
                     if compilar_latex_mac(f"{n_p}.tex"): pdfs_provas.append(f"{n_p}.pdf")
                         
                     n_g = f"Gabarito_{sufixo_arquivo}"
