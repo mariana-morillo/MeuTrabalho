@@ -552,6 +552,7 @@ with aba_avaliacoes:
 
             # Adicione , uso_c no final dos parênteses da função:
             inserir_questao(d_c, ass_c, dif_c, e_c, alts_para_banco, p_c, t_q, gab_d_final, img_n, esp_c, tam_c, gab_img_n, uso_c)
+            salvar_banco_no_cofre()
             st.success("✅ Questão guardada com sucesso!")
             st.session_state.limpar_proxima_cad = True
             st.rerun()
@@ -834,15 +835,20 @@ with aba_avaliacoes:
                                 else: img_bd = img_obj
                                 alts_para_inserir.append((t, co, img_bd))
                         
-                        # Injeta como uma QUESTÃO NOVA em vez de fazer Update
+                    
                         # Injeta como uma QUESTÃO NOVA em vez de fazer Update (agora com n_uso)
                         inserir_questao(n_disc, n_ass, n_dif, n_enun_final, alts_para_inserir, n_pts, n_tipo, val_gab, i_f, n_esp, n_tam, i_g_f, n_uso)
+                        salvar_banco_no_cofre()
                         st.success("✅ Nova cópia salva no banco de dados!")
                         st.rerun()
 
                     if cb_e.button("🗑️ Excluir Permanente", use_container_width=True):
                         conn.close() # 🔴 ADICIONE ESTA LINHA AQUI TAMBÉM! Libera o banco para o db.py
-                        excluir_questao(id_editar); st.warning("Excluída!"); st.rerun()
+                        excluir_questao(id_editar); 
+                        salvar_banco_no_cofre()
+                        st.warning("Excluída!"); 
+                        st.rerun()
+                        
                 conn.close()
         else: st.info("O seu banco de questões ainda está vazio.")
 
