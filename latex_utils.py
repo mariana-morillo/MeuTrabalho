@@ -76,9 +76,9 @@ def gerar_preview_web(texto):
         for i, parte in enumerate(partes[1:]):
             parte_limpa = parte.lstrip() 
             if usar_letras:
-                marcador = f"**{letras[i % 26]})**"
+                marcador = f"**{letras[i % 26]})**&nbsp;"
             else:
-                marcador = f"**{i + 1}.**"
+                marcador = f"**{i + 1}.**&nbsp;"
                 
             # O \n\n garante que o Streamlit quebre a linha e crie um parágrafo perfeito
             texto_final += f"\n\n{marcador} {parte_limpa}"
