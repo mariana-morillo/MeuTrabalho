@@ -33,20 +33,24 @@ def baixar_banco_do_cofre():
         res = supabase.storage.from_("bancos-sqlite").download(nome_arquivo)
         with open(nome_arquivo, "wb") as f:
             f.write(res)
-    except: pass
+    except Exception as e:
+        # Se der erro aqui, a gente vai saber o motivo real
+        st.error(f"Erro ao baixar banco do cofre: {e}")
 
 def salvar_banco_no_cofre():
     """Leva o arquivo do Streamlit para o Supabase"""
     if not supabase: return
     nome_arquivo = get_db_name()
     if os.path.exists(nome_arquivo):
-        with open(nome_arquivo, "rb") as f:
-            # O segredo é colocar o "true" entre aspas, como texto!
-            supabase.storage.from_("bancos-sqlite").upload(
-                file=f, 
-                path=nome_arquivo, 
-                file_options={"x-upsert": "true"}
-            )
+        try:
+            with open(nome_arquivo, "rb") as f:
+                supabase.storage.from_("bancos-sqlite").upload(
+                    file=f, 
+                    path=nome_arquivo, 
+                    file_options={"x-upsert": "true"}
+                )
+        except Exception as e:
+            st.error(f"Erro ao salvar no cofre: {e}")
 # =========================================================================
 # --- MANUTENÇÃO E BACKUP ---
 # =========================================================================
@@ -54,9 +58,10 @@ def criar_backup_banco():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nome_backup = f"backup_questoes_{timestamp}.db"
     try: 
-        shutil.copy2('banco_provas.db', nome_backup)
+        shutil.copy2(get_db_name(), nome_backup) # Mudei para pegar o nome dinâmico
         return nome_backup
-    except: 
+    except Exception as e: 
+        st.warning(f"Não foi possível criar backup local: {e}")
         return None
 
 def backup_para_icloud():
@@ -146,8 +151,10 @@ def limpar_dados_teste():
     with sqlite3.connect(get_db_name()) as conn:
         cursor = conn.cursor()
         for tabela in tabelas_para_limpar:
-            try: cursor.execute(f"DELETE FROM {tabela}")
-            except: pass 
+            try: 
+                cursor.execute(f"DELETE FROM {tabela}")
+            except Exception as e:
+                st.sidebar.error(f"Erro ao limpar {tabela}: {e}")
         conn.commit()
     return True
 
