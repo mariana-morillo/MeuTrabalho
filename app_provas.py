@@ -804,7 +804,10 @@ with aba_avaliacoes:
                                     img_bd = nome_f
                                 else: img_bd = img_obj
                                 c.execute('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (?, ?, ?, ?)', (id_editar, t, co, img_bd))
-                        conn.commit(); st.success("✅ Tudo atualizado!"); st.rerun()
+                        conn.commit(); 
+                        salvar_banco_no_cofre()
+                        st.success("✅ Tudo atualizado!"); 
+                        st.rerun()
 
                     # O NOVO BOTÃO DE DUPLICAR AQUI:
                     if cb_d.button("💾 Salvar como Nova", use_container_width=True, help="Cria uma CÓPIA exata no banco (ideal para mudar valores)"):
