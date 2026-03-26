@@ -38,8 +38,11 @@ def salvar_banco_no_cofre():
     nome_arquivo = get_db_name()
     if os.path.exists(nome_arquivo):
         with open(nome_arquivo, "rb") as f:
+            # Mudamos para BANCOS-SQLITE e corrigimos para "upsert": True
             supabase.storage.from_("BANCOS-SQLITE").upload(
-                file=f, path=nome_arquivo, file_options={"x-upsert": "true"}
+                file=f, 
+                path=nome_arquivo, 
+                file_options={"upsert": True}
             )
 # =========================================================================
 # --- MANUTENÇÃO E BACKUP ---
