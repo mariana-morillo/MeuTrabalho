@@ -8,13 +8,16 @@ from datetime import datetime
 from difflib import SequenceMatcher
 import streamlit as st
 from supabase import create_client
+# Substitua o bloco antigo por este:
+URL = st.secrets.get("SUPABASE_URL")
+KEY = st.secrets.get("SUPABASE_KEY")
 
-# 2. ADICIONE logo abaixo dos imports a conexão com o cofre:
-try:
-    URL = st.secrets["SUPABASE_URL"]
-    KEY = st.secrets["SUPABASE_KEY"]
-    supabase = create_client(URL, KEY)
-except:
+if URL and KEY:
+    try:
+        supabase = create_client(str(URL), str(KEY)) # O str() garante que seja texto puro
+    except:
+        supabase = None
+else:
     supabase = None
 def get_db_name():
     """Descobre o nome do arquivo. Se for a Mariana logada, será banco_mariana.db"""
