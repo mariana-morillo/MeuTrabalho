@@ -53,46 +53,52 @@ def gerar_preview_web(texto):
     t = re.sub(r'\\subsection\*?\{(.*?)\}', r'#### \1', t, flags=re.DOTALL)
     
     # =========================================================
-    # 2. O SEGREDO AQUI: Tratando Listas e Enumerações
+    # 2. O SEGREDO AQUI: Tratando Listas e Enumerações com HTML
     # =========================================================
     
     # A. Enumerate (Dinâmico: Números ou Letras)
     def replace_enum(m):
-        formato = m.group(1) or ""  # Captura o que está dentro de [] (ex: [a)])
-        conteudo = m.group(2)       # Captura o texto com os \item
+        formato = m.group(1) or ""  
+        conteudo = m.group(2)       
         
         usar_letras = False
         if "a" in formato.lower() or "\\alph" in formato.lower():
             usar_letras = True
             
         partes = re.split(r'\s*\\item\s*', conteudo)
-        texto_final = partes[0] 
+        texto_final = partes[0]
         letras = "abcdefghijklmnopqrstuvwxyz"
         
         for i, parte in enumerate(partes[1:]):
-            # O lstrip() "aspira" quebras de linha e espaços no começo da frase!
             parte_limpa = parte.lstrip() 
-            
             if usar_letras:
-                marcador = f"**{letras[i % 26]})**"
+                marcador = f"<b>{letras[i % 26]})</b>"
             else:
-                marcador = f"**{i + 1}.**"
+                marcador = f"<b>{i + 1}.</b>"
                 
-            texto_final += f"\n{marcador} {parte_limpa}"
+            # O <br> blinda o texto e impede o Streamlit de quebrar a linha acidentalmente!
+            texto_final += f"<br> {marcador} {parte_limpa}"
             
         return texto_final
     
     t = re.sub(r'\\begin\{enumerate\}(?:\[(.*?)\])?(.*?)\\end\{enumerate\}', replace_enum, t, flags=re.DOTALL)
     
-    # B. Itemize (Bolinhas) - Troca o \item por "* "
+    # B. Itemize (Bolinhas) blindado com HTML
     def replace_item(m):
-        return re.sub(r'\s*\\item\s*', r'\n* ', m.group(1))
+        conteudo = m.group(1)
+        partes = re.split(r'\s*\\item\s*', conteudo)
+        texto_final = partes[0]
+        
+        for parte in partes[1:]:
+            parte_limpa = parte.lstrip()
+            texto_final += f"<br> • {parte_limpa}"
+            
+        return texto_final
     
     t = re.sub(r'\\begin\{itemize\}(?:\[.*?\])?(.*?)\\end\{itemize\}', replace_item, t, flags=re.DOTALL)
     
-    # Fallback de segurança: se sobrou algum \item solto sem \begin, vira bolinha
-    t = re.sub(r'\s*\\item\s+', r'\n* ', t)
-
+    # Fallback de segurança
+    t = re.sub(r'\s*\\item\s+', r'<br> • ', t)
     # =========================================================
     
     # 3. Mantém o aviso visual da Tabela
