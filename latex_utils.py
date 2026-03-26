@@ -39,38 +39,36 @@ def gerar_preview_web(texto):
     
     t = str(texto)
     
-    # 🧹 FAXINA AUTOMÁTICA: Some com qualquer '£' antigo que tenha ficado no banco!
+    # 🧹 Faxina: Some com qualquer '£' antigo que tenha ficado no banco
     t = t.replace('£', '')
     
-    # 1. Traduz negrito e itálico do LaTeX para o Markdown do Streamlit
-    t = re.sub(r'\\textbf{(.*?)}', r'**\1**', t)
-    t = re.sub(r'\\textit{(.*?)}', r'*\1*', t)
-    t = re.sub(r'\\underline{(.*?)}', r'<ins>\1</ins>', t)
+    # 1. Traduz negrito, itálico e sublinhado
+    t = re.sub(r'\\textbf\{(.*?)\}', r'**\1**', t, flags=re.DOTALL)
+    t = re.sub(r'\\textit\{(.*?)\}', r'*\1*', t, flags=re.DOTALL)
+    t = re.sub(r'\\underline\{(.*?)\}', r'<ins>\1</ins>', t, flags=re.DOTALL)
     
-    # Mantém as cores funcionando no preview
-    t = re.sub(r'\\textcolor{(.*?)}{(.*?)}', r'<span style="color:\1;">\2</span>', t)
+    # Mantém as cores
+    t = re.sub(r'\\textcolor\{(.*?)\}\{(.*?)\}', r'<span style="color:\1;">\2</span>', t, flags=re.DOTALL)
     
     # 2. Traduz Títulos
-    t = re.sub(r'\\section\*?{(.*?)}', r'### \1', t)
-    t = re.sub(r'\\subsection\*?{(.*?)}', r'#### \1', t)
+    t = re.sub(r'\\section\*?\{(.*?)\}', r'### \1', t, flags=re.DOTALL)
+    t = re.sub(r'\\subsection\*?\{(.*?)\}', r'#### \1', t, flags=re.DOTALL)
     
-    # 3. Traduz Listas (Itemize / Enumerate) usando Markdown (Isso salva as equações!)
+    # 3. Traduz Listas
     t = t.replace(r'\begin{itemize}', '')
     t = t.replace(r'\end{itemize}', '')
     t = t.replace(r'\begin{enumerate}', '')
     t = t.replace(r'\end{enumerate}', '')
-    
-    # Transforma o \item em um "bullet point" do Streamlit
     t = re.sub(r'\\item\s+', r'* ', t)
     
-    # 4. Mantém o seu aviso super profissional de Tabelas!
-    t = re.sub(r'\\begin{tabular}.*?\\end{tabular}', 
+    # 4. Mantém o aviso visual da Tabela
+    t = re.sub(r'\\begin\{tabular\}.*?\\end\{tabular\}', 
                   r'<div style="padding:15px; background:#e3f2fd; border-left: 5px solid #2196f3; border-radius:5px; color:#0d47a1; margin:10px 0;">'
                   r'<b>📊 Tabela LaTeX Detectada</b><br>'
                   r'<small>O código está salvo! No PDF final ela sairá com todas as grades e colunas.</small></div>', 
                   t, flags=re.DOTALL)
     
-    # 5. Garante que as quebras de linha funcionem na tela web
+    # 5. Garante as quebras de linha
     t = t.replace('\n', '  \n')
     
     return t
