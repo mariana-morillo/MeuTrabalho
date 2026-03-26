@@ -1000,39 +1000,40 @@ with aba_avaliacoes:
             st.markdown("**🎛️ 4. Ajustes Finos da Prova**")
             pontos_totais, remover = 0, []
             for i, q in enumerate(st.session_state.prova_atual):
+                # Mantemos o i+1 apenas para a exibição visual (Q1, Q2, etc)
                 with st.expander(f"Q{i+1} | {q['tipo']} | ID: {q['id']}"):
                     
                     # --- 1. EDIÇÃO DO ENUNCIADO ---
                     st.markdown("**💬 Enunciado**")
-                    key_enun_adj = f"adj_enun_{i}_{q['id']}"
+                    key_enun_adj = f"adj_enun_{q['id']}" # <-- Alterado aqui
                     if key_enun_adj not in st.session_state: st.session_state[key_enun_adj] = q['enunciado']
                     
                     col_adj_1, col_adj_2, col_adj_3, col_adj_4 = st.columns([0.15, 0.15, 0.15, 0.55])
                     with col_adj_1:
                         with st.popover("🖋️ Estilo", use_container_width=True):
                             c_b = st.columns(2)
-                            for k, (l, cmd) in enumerate(estilo): c_b[k%2].button(l, key=f"adj_e_{i}_{k}", on_click=injetar_texto, args=(cmd, key_enun_adj))
+                            for k, (l, cmd) in enumerate(estilo): c_b[k%2].button(l, key=f"adj_e_{q['id']}_{k}", on_click=injetar_texto, args=(cmd, key_enun_adj))
                     with col_adj_2:
                         with st.popover("🧮 f(x)", use_container_width=True):
                             tg, tm, tc, tf, tt = st.tabs(["αβγ", "Mat", "Cálc", "🌊", "🔥"])
                             with tg: 
                                 cg = st.columns(4)
-                                for k, (l, cmd) in enumerate(gregas): cg[k%4].button(l, key=f"adj_g_{i}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
+                                for k, (l, cmd) in enumerate(gregas): cg[k%4].button(l, key=f"adj_g_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
                             with tm: 
                                 cm = st.columns(3)
-                                for k, (l, cmd) in enumerate(matematica): cm[k%3].button(l, key=f"adj_m_{i}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
+                                for k, (l, cmd) in enumerate(matematica): cm[k%3].button(l, key=f"adj_m_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
                             with tc: 
                                 cc = st.columns(3)
-                                for k, (l, cmd) in enumerate(calculo): cc[k%3].button(l, key=f"adj_c_{i}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
+                                for k, (l, cmd) in enumerate(calculo): cc[k%3].button(l, key=f"adj_c_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
                             with tf: 
                                 cf = st.columns(1)
-                                for k, (l, cmd) in enumerate(fluidos): cf[0].button(l, key=f"adj_f_{i}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
+                                for k, (l, cmd) in enumerate(fluidos): cf[0].button(l, key=f"adj_f_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
                             with tt: 
                                 ct = st.columns(1)
-                                for k, (l, cmd) in enumerate(termo): ct[0].button(l, key=f"adj_t_{i}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
+                                for k, (l, cmd) in enumerate(termo): ct[0].button(l, key=f"adj_t_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_enun_adj))
                     with col_adj_3:
                         with st.popover("🖼️ Imagem", use_container_width=True):
-                            adj_img_up = st.file_uploader("Trocar", type=["png", "jpg", "jpeg"], key=f"adj_img_{i}_{q['id']}", label_visibility="collapsed")
+                            adj_img_up = st.file_uploader("Trocar", type=["png", "jpg", "jpeg"], key=f"adj_img_{q['id']}", label_visibility="collapsed")
 
                     novo_enun = st.text_area("Enunciado", key=key_enun_adj, height=100, label_visibility="collapsed")
                     st.session_state.prova_atual[i]['enunciado'] = novo_enun
@@ -1070,49 +1071,49 @@ with aba_avaliacoes:
                             cursor_t.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ? ORDER BY id', (q['id'],))
                             alts_q_adj = cursor_t.fetchall()
                             
-                        n_opt_key_adj = f"adj_n_opt_{i}_{q['id']}"
+                        n_opt_key_adj = f"adj_n_opt_{q['id']}"
                         if n_opt_key_adj not in st.session_state: st.session_state[n_opt_key_adj] = max(len(alts_q_adj), 4)
                         
                         cb1, cb2, _ = st.columns([0.12, 0.12, 0.76])
-                        if cb1.button("➕ Linha", key=f"adj_add_alt_{i}"): st.session_state[n_opt_key_adj] += 1; st.rerun()
-                        if cb2.button("➖ Linha", key=f"adj_rm_alt_{i}") and st.session_state[n_opt_key_adj] > 2: st.session_state[n_opt_key_adj] -= 1; st.rerun()
+                        if cb1.button("➕ Linha", key=f"adj_add_alt_{q['id']}"): st.session_state[n_opt_key_adj] += 1; st.rerun()
+                        if cb2.button("➖ Linha", key=f"adj_rm_alt_{q['id']}") and st.session_state[n_opt_key_adj] > 2: st.session_state[n_opt_key_adj] -= 1; st.rerun()
 
                         letras_adj = "ABCDEFGHIJ"
                         for j in range(st.session_state[n_opt_key_adj]):
                             with st.container(border=True):
                                 c_chk, c_est, c_fx, c_img = st.columns([0.1, 0.25, 0.25, 0.25])
                                 corr_v = bool(alts_q_adj[j][1]) if j < len(alts_q_adj) else False
-                                corr = c_chk.checkbox(letras_adj[j], value=corr_v, key=f"adj_c_alt_{i}_{j}")
+                                corr = c_chk.checkbox(letras_adj[j], value=corr_v, key=f"adj_c_alt_{q['id']}_{j}")
                                 
-                                k_alt = f"adj_t_alt_v_{i}_{j}"
+                                k_alt = f"adj_t_alt_v_{q['id']}_{j}"
                                 if k_alt not in st.session_state: st.session_state[k_alt] = alts_q_adj[j][0] if j < len(alts_q_adj) else ""
                                 
                                 with c_est:
                                     with st.popover("🖋️ Estilo", use_container_width=True):
                                         c_b = st.columns(2)
-                                        for idx, (l, cmd) in enumerate(estilo): c_b[idx%2].button(l, key=f"adj_ae_{i}_{j}_{idx}", on_click=injetar_texto, args=(cmd, k_alt))
+                                        for idx, (l, cmd) in enumerate(estilo): c_b[idx%2].button(l, key=f"adj_ae_{q['id']}_{j}_{idx}", on_click=injetar_texto, args=(cmd, k_alt))
                                 with c_fx:
                                     with st.popover("🧮 f(x)", use_container_width=True):
                                         tg, tm, tc, tf, tt = st.tabs(["αβγ", "Mat", "Cálc", "🌊", "🔥"])
                                         with tg: 
                                             cg_g = st.columns(4)
-                                            for idx, (l, cmd) in enumerate(gregas): cg_g[idx%4].button(l, key=f"adj_ag_{i}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            for idx, (l, cmd) in enumerate(gregas): cg_g[idx%4].button(l, key=f"adj_ag_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
                                         with tm: 
                                             cg_m = st.columns(3)
-                                            for idx, (l, cmd) in enumerate(matematica): cg_m[idx%3].button(l, key=f"adj_am_{i}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            for idx, (l, cmd) in enumerate(matematica): cg_m[idx%3].button(l, key=f"adj_am_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
                                         with tc: 
                                             cg_c = st.columns(3)
-                                            for idx, (l, cmd) in enumerate(calculo): cg_c[idx%3].button(l, key=f"adj_ac_{i}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            for idx, (l, cmd) in enumerate(calculo): cg_c[idx%3].button(l, key=f"adj_ac_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
                                         with tf: 
                                             cg_f = st.columns(1)
-                                            for idx, (l, cmd) in enumerate(fluidos): cg_f[0].button(l, key=f"adj_af_{i}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            for idx, (l, cmd) in enumerate(fluidos): cg_f[0].button(l, key=f"adj_af_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
                                         with tt: 
                                             cg_t = st.columns(1)
-                                            for idx, (l, cmd) in enumerate(termo): cg_t[0].button(l, key=f"adj_at_{i}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            for idx, (l, cmd) in enumerate(termo): cg_t[0].button(l, key=f"adj_at_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
                                         
                                 with c_img:
                                     with st.popover("🖼️ Imagem", use_container_width=True):
-                                        up_ia = st.file_uploader("Trocar", type=["png", "jpg", "jpeg"], key=f"adj_ia_{i}_{j}", label_visibility="collapsed")
+                                        up_ia = st.file_uploader("Trocar", type=["png", "jpg", "jpeg"], key=f"adj_ia_{q['id']}_{j}", label_visibility="collapsed")
 
                                 txt_a = st.text_input("Texto", key=k_alt, label_visibility="collapsed")
                                 if txt_a.strip(): st.markdown(f'<span style="color:#3498db;">↳</span> {gerar_preview_web(txt_a)}', unsafe_allow_html=True)
@@ -1136,14 +1137,14 @@ with aba_avaliacoes:
                         st.write("---")
                         st.markdown("**💡 Resposta (V/F)**")
                         st.caption("⚠️ Atenção: Alterações aqui SÓ vão para o PDF se você clicar em 'Atualizar no Banco'.")
-                        resp = st.radio("Gabarito:", ["Verdadeiro", "Falso"], index=idx_banco, horizontal=True, key=f"adj_vf_{i}_{q['id']}", label_visibility="collapsed")
+                        resp = st.radio("Gabarito:", ["Verdadeiro", "Falso"], index=idx_banco, horizontal=True, key=f"adj_vf_{q['id']}", label_visibility="collapsed")
                         alts_modificadas_adj = [("Verdadeiro", resp == "Verdadeiro"), ("Falso", resp == "Falso")]
 
                     elif q['tipo'] == "Numérica":
                         st.write("---")
                         st.markdown("**💡 Resposta Exata (Numérica)**")
                         val_atual = int(novo_gab) if str(novo_gab).isdigit() else 0
-                        novo_gab_num = st.number_input("Valor (0 a 99):", min_value=0, max_value=99, step=1, value=val_atual, key=f"adj_num_{i}_{q['id']}")
+                        novo_gab_num = st.number_input("Valor (0 a 99):", min_value=0, max_value=99, step=1, value=val_atual, key=f"adj_num_{q['id']}")
                         novo_gab = str(novo_gab_num).zfill(2)
                         st.session_state.prova_atual[i]['gabarito'] = novo_gab
                         
@@ -1151,40 +1152,40 @@ with aba_avaliacoes:
                         with c_g1: st.info(f"O gabarito na prova será: **{novo_gab}**")
                         with c_gi:
                             with st.popover("🖼️ Imagem", use_container_width=True):
-                                adj_ig_up = st.file_uploader("Upload", type=["png","jpg","jpeg"], key=f"adj_ig_num_{i}_{q['id']}", label_visibility="collapsed")
+                                adj_ig_up = st.file_uploader("Upload", type=["png","jpg","jpeg"], key=f"adj_ig_num_{q['id']}", label_visibility="collapsed")
                                 
                     elif q['tipo'] == "Discursiva":
                         st.write("---")
                         st.markdown("**💡 Resolução Detalhada:**")
-                        key_gab_adj = f"adj_gab_{i}_{q['id']}"
+                        key_gab_adj = f"adj_gab_{q['id']}"
                         if key_gab_adj not in st.session_state: st.session_state[key_gab_adj] = str(novo_gab)
                         
                         c_ge, c_gf, c_gi, _ = st.columns([0.15, 0.15, 0.15, 0.55])
                         with c_ge:
                             with st.popover("🖋️ Estilo", use_container_width=True):
                                 c_gb = st.columns(2)
-                                for k, (l, cmd) in enumerate(estilo): c_gb[k%2].button(l, key=f"adj_ge_{i}_{k}", on_click=injetar_texto, args=(cmd, key_gab_adj))
+                                for k, (l, cmd) in enumerate(estilo): c_gb[k%2].button(l, key=f"adj_ge_{q['id']}_{k}", on_click=injetar_texto, args=(cmd, key_gab_adj))
                         with c_gf:
                             with st.popover("🧮 f(x)", use_container_width=True):
                                 tg, tm, tc, tf, tt = st.tabs(["αβγ", "Mat", "Cálc", "🌊", "🔥"])
                                 with tg: 
                                     cg_g = st.columns(4)
-                                    for k, (l, cmd) in enumerate(gregas): cg_g[k%4].button(l, key=f"adj_gg_{i}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
+                                    for k, (l, cmd) in enumerate(gregas): cg_g[k%4].button(l, key=f"adj_gg_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
                                 with tm: 
                                     cg_m = st.columns(3)
-                                    for k, (l, cmd) in enumerate(matematica): cg_m[k%3].button(l, key=f"adj_gm_{i}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
+                                    for k, (l, cmd) in enumerate(matematica): cg_m[k%3].button(l, key=f"adj_gm_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
                                 with tc: 
                                     cg_c = st.columns(3)
-                                    for k, (l, cmd) in enumerate(calculo): cg_c[k%3].button(l, key=f"adj_gc_{i}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
+                                    for k, (l, cmd) in enumerate(calculo): cg_c[k%3].button(l, key=f"adj_gc_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
                                 with tf: 
                                     c_f = st.columns(1)
-                                    for k, (l, cmd) in enumerate(fluidos): c_f[0].button(l, key=f"adj_gf_{i}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
+                                    for k, (l, cmd) in enumerate(fluidos): c_f[0].button(l, key=f"adj_gf_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
                                 with tt: 
                                     c_t = st.columns(1)
-                                    for k, (l, cmd) in enumerate(termo): c_t[0].button(l, key=f"adj_gt_{i}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
+                                    for k, (l, cmd) in enumerate(termo): c_t[0].button(l, key=f"adj_gt_{q['id']}_{k}", on_click=injetar_direto, args=(cmd, key_gab_adj))
                         with c_gi:
                             with st.popover("🖼️ Imagem", use_container_width=True):
-                                adj_ig_up = st.file_uploader("Upload", type=["png","jpg","jpeg"], key=f"adj_ig_disc_{i}_{q['id']}", label_visibility="collapsed")
+                                adj_ig_up = st.file_uploader("Upload", type=["png","jpg","jpeg"], key=f"adj_ig_disc_{q['id']}", label_visibility="collapsed")
                                 
                         novo_gab_edit = st.text_area("Gabarito", key=key_gab_adj, height=120, label_visibility="collapsed")
                         st.session_state.prova_atual[i]['gabarito'] = novo_gab_edit
@@ -1207,9 +1208,12 @@ with aba_avaliacoes:
 
                     # --- 3. CONTROLES: NOTA, SALVAR NO BANCO E REMOVER ---
                     c_e1, c_e2, c_e_dup, c_e3 = st.columns([0.25, 0.25, 0.25, 0.25], vertical_alignment="bottom")
-                    novo_pt = c_e1.number_input("Pontos", value=float(q['pontos']), step=0.5, key=f"prev_pt_gen_{i}")
+                    novo_pt = c_e1.number_input("Pontos", value=float(q['pontos']), step=0.5, key=f"prev_pt_gen_{q['id']}")
                     
-                    if c_e2.button("🆙 Atualizar", key=f"sv_banco_{i}_{q['id']}", use_container_width=True):
+                    # ⚠️ Lógica de proteção contra clones + Sincronização na Nuvem
+                    is_clone = "_copy_" in str(q['id'])
+                    
+                    if c_e2.button("🆙 Atualizar", key=f"sv_banco_{q['id']}", use_container_width=True, disabled=is_clone):
                         with sqlite3.connect(get_db_name()) as conn_upd:
                             conn_upd.execute("UPDATE questoes SET enunciado=?, pontos=?, imagem=?, gabarito_imagem=?, gabarito_discursivo=? WHERE id=?", 
                                              (novo_enun, novo_pt, img_temp, img_gab_temp, novo_gab, q['id']))
@@ -1228,17 +1232,19 @@ with aba_avaliacoes:
                                     conn_upd.execute('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (?, ?, ?, ?)', (q['id'], t, co, img_bd))
                             
                             conn_upd.commit()
+                            salvar_banco_no_cofre() # <--- Sincroniza a atualização da prova com a nuvem
                         st.success(f"Questão atualizada no banco de dados!")
 
-                    if c_e_dup.button("🧬 Clonar", key=f"dup_p_gen_{i}_{q['id']}", use_container_width=True, help="Duplica a questão aqui mesmo"):
+                    if c_e_dup.button("🧬 Clonar", key=f"dup_p_gen_{q['id']}", use_container_width=True, help="Duplica a questão aqui mesmo"):
                         import random
                         nova_q = q.copy() 
                         nova_q['id'] = f"{q['id']}_copy_{random.randint(1000,9999)}"
                         st.session_state.prova_atual.insert(i + 1, nova_q)
                         st.rerun()
                     
-                    if c_e3.button("🗑️ Remover", key=f"rm_p_gen_{i}", use_container_width=True): 
-                        remover.append(i)
+                    # O botão remover mantém o índice 'i' pois a remoção é pela posição na lista atual
+                    if c_e3.button("🗑️ Remover", key=f"rm_p_gen_{q['id']}", use_container_width=True): 
+                        remover.append(i) 
                     
                     st.session_state.prova_atual[i]['pontos'] = novo_pt
                     pontos_totais += novo_pt
