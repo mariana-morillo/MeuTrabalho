@@ -100,7 +100,9 @@ if 'aluno_logado_ra' not in st.session_state:
 with st.sidebar:
     st.markdown("### 🔑 Acesso Seguro")
     if not st.session_state.aluno_logado_ra:
-        prof_alvo = st.selectbox("Quem é seu Professor(a)?", ["Mariana", "Junior", "Samara","Alfredo" ])
+        prof_alvo = st.selectbox("Quem é seu Professor(a)?", ["Mariana", "Junior", "Samara","Alfredo", "Edemar", "Andre", "ingrid"])
+        
+        
         ra_login = st.text_input("Seu RA:")
         senha_login = st.text_input("Sua Senha:", type="password")
         

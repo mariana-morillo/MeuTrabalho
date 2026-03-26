@@ -41,7 +41,8 @@ def mostrar_tela_login():
         "samara": "fam2026",
         "alfredo": "fam2026",
         "edemar": "veidalancha",
-        "andre": "cornomanso"
+        "andre": "cornomanso",
+        "ingrid": "uni2026"
     }
 
     with st.form("login_form"):

@@ -56,13 +56,33 @@ def gerar_preview_web(texto):
     # 2. O SEGREDO AQUI: Tratando Listas e Enumerações
     # =========================================================
     
-    # A. Enumerate (Numerado) - Troca o \item por "1. "
-    # O Streamlit é inteligente: se você colocar "1. " várias vezes, ele conta 1, 2, 3 sozinho!
+    # A. Enumerate (Dinâmico: Números ou Letras)
     def replace_enum(m):
-        return re.sub(r'\s*\\item\s*', r'\n1. ', m.group(1))
+        formato = m.group(1) or ""  # Captura o que está dentro de [] (ex: [a)])
+        conteudo = m.group(2)       # Captura o texto com os \item
+        
+        # Verifica se o utilizador pediu letras no formato
+        usar_letras = False
+        if "a" in formato.lower() or "\\alph" in formato.lower():
+            usar_letras = True
+            
+        # Quebra o texto a cada \item encontrado
+        partes = re.split(r'\s*\\item\s*', conteudo)
+        texto_final = partes[0] # Mantém o que vier antes do primeiro \item
+        letras = "abcdefghijklmnopqrstuvwxyz"
+        
+        # Aplica o marcador correto (letra ou número)
+        for i, parte in enumerate(partes[1:]):
+            if usar_letras:
+                marcador = f"**{letras[i % 26]})**"
+            else:
+                marcador = f"**{i + 1}.**"
+            texto_final += f"\n{marcador} {parte}"
+            
+        return texto_final
     
-    # Esse (?:\[.*?\])? engole formatações extras tipo \begin{enumerate}[label=a)] para não vazar lixo na tela
-    t = re.sub(r'\\begin\{enumerate\}(?:\[.*?\])?(.*?)\\end\{enumerate\}', replace_enum, t, flags=re.DOTALL)
+    # A regex agora captura o que estiver dentro do [...] no grupo 1, e o texto no grupo 2
+    t = re.sub(r'\\begin\{enumerate\}(?:\[(.*?)\])?(.*?)\\end\{enumerate\}', replace_enum, t, flags=re.DOTALL)
     
     # B. Itemize (Bolinhas) - Troca o \item por "* "
     def replace_item(m):
