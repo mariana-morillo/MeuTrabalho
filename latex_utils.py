@@ -31,36 +31,49 @@ def escapar_latex(texto):
             
     return "".join(resultado)
 
+import re
+
 def gerar_preview_web(texto):
-    if not texto: return ""
-    import re
+    if not texto: 
+        return ""
     
-    prev = texto
-    prev = re.sub(r'£\\textbf\{(.*?)\}£', r'<b>\1</b>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\textit\{(.*?)\}£', r'<i>\1</i>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\underline\{(.*?)\}£', r'<u>\1</u>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\textcolor\{(.*?)\}\{(.*?)\}£', r'<span style="color:\1;">\2</span>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\Large\{(.*?)\}£', r'<span style="font-size:24px; font-weight:bold;">\1</span>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\small\{(.*?)\}£', r'<span style="font-size:12px;">\1</span>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\section\*\{(.*?)\}£', r'<h3>\1</h3>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\subsection\*\{(.*?)\}£', r'<h4>\1</h4>', prev, flags=re.DOTALL)
+    t = str(texto)
     
-    prev = re.sub(r'£\\begin\{itemize\}(.*?)\\end\{itemize\}£', r'<ul>\1</ul>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\begin\{enumerate\}(.*?)\\end\{enumerate\}£', r'<ol>\1</ol>', prev, flags=re.DOTALL)
-    prev = re.sub(r'\\item\s*(.*?)(?=\\item|</ul>|</ol>|$)', r'<li>\1</li>', prev, flags=re.DOTALL)
+    # 🧹 FAXINA AUTOMÁTICA: Some com qualquer '£' antigo que tenha ficado no banco!
+    t = t.replace('£', '')
     
-    prev = re.sub(r'£\\begin\{tabular\}.*?\\end\{tabular\}£', 
+    # 1. Traduz negrito e itálico do LaTeX para o Markdown do Streamlit
+    t = re.sub(r'\\textbf{(.*?)}', r'**\1**', t)
+    t = re.sub(r'\\textit{(.*?)}', r'*\1*', t)
+    t = re.sub(r'\\underline{(.*?)}', r'<ins>\1</ins>', t)
+    
+    # Mantém as cores funcionando no preview
+    t = re.sub(r'\\textcolor{(.*?)}{(.*?)}', r'<span style="color:\1;">\2</span>', t)
+    
+    # 2. Traduz Títulos
+    t = re.sub(r'\\section\*?{(.*?)}', r'### \1', t)
+    t = re.sub(r'\\subsection\*?{(.*?)}', r'#### \1', t)
+    
+    # 3. Traduz Listas (Itemize / Enumerate) usando Markdown (Isso salva as equações!)
+    t = t.replace(r'\begin{itemize}', '')
+    t = t.replace(r'\end{itemize}', '')
+    t = t.replace(r'\begin{enumerate}', '')
+    t = t.replace(r'\end{enumerate}', '')
+    
+    # Transforma o \item em um "bullet point" do Streamlit
+    t = re.sub(r'\\item\s+', r'* ', t)
+    
+    # 4. Mantém o seu aviso super profissional de Tabelas!
+    t = re.sub(r'\\begin{tabular}.*?\\end{tabular}', 
                   r'<div style="padding:15px; background:#e3f2fd; border-left: 5px solid #2196f3; border-radius:5px; color:#0d47a1; margin:10px 0;">'
                   r'<b>📊 Tabela LaTeX Detectada</b><br>'
                   r'<small>O código está salvo! No PDF final ela sairá com todas as grades e colunas.</small></div>', 
-                  prev, flags=re.DOTALL)
+                  t, flags=re.DOTALL)
     
-    prev = re.sub(r'£\\texttt\{(.*?)\}£', r'<code style="background:#f0f2f6; padding:2px 4px; border-radius:4px;">\1</code>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\cite\{(.*?)\}£', r'<sup style="color:blue; font-weight:bold;">[Cit: \1]</sup>', prev, flags=re.DOTALL)
-    prev = re.sub(r'£\\ref\{(.*?)\}£', r'<sup style="color:red; font-weight:bold;">[Ref: \1]</sup>', prev, flags=re.DOTALL)
+    # 5. Garante que as quebras de linha funcionem na tela web
+    t = t.replace('\n', '  \n')
     
-    prev = prev.replace('£', '')
-    return prev
+    return t
 
 def configurar_jinja():
     return jinja2.Environment(block_start_string='<%', block_end_string='%>', variable_start_string='<<', variable_end_string='>>', trim_blocks=True, autoescape=False, loader=jinja2.FileSystemLoader(os.path.abspath('.')))

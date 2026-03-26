@@ -134,10 +134,12 @@ termo = [("1ª Lei", r"\Delta U = Q - W"), ("Gás Ideal", r"P V = n R T"), ("Tra
 def injetar_direto(comando, target_key):
     if target_key in st.session_state: st.session_state[target_key] += f" ${comando}$ "
     else: st.session_state[target_key] = f" ${comando}$ "
-# NOVA FUNÇÃO (para Textos, Tabelas e Tópicos com £)
+# NOVA FUNÇÃO (Injeta LaTeX puro, mantendo o banco seguro)
 def injetar_texto(comando, target_key):
-    if target_key in st.session_state: st.session_state[target_key] += f" £{comando}£ "
-    else: st.session_state[target_key] = f" £{comando}£ "
+    if target_key in st.session_state: 
+        st.session_state[target_key] += f"\n{comando}\n"
+    else: 
+        st.session_state[target_key] = f"{comando}\n"
 
     
 
