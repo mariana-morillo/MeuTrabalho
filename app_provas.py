@@ -648,7 +648,10 @@ with aba_avaliacoes:
                             n_img_up = st.file_uploader("Trocar", type=["png", "jpg", "jpeg"], key=f"ed_up_enun_{id_editar}", label_visibility="collapsed")
 
                     n_enun_final = st.text_area("Enunciado", key=key_enun, height=150, label_visibility="collapsed")
-                    
+                    # 👇 ADICIONE ESTAS DUAS LINHAS AQUI 👇
+                    if n_enun_final.strip():
+                        st.markdown(f'<span style="color:#3498db;">↳</span> {gerar_preview_web(n_enun_final)}', unsafe_allow_html=True)
+                    # 👆 ================================ 👆
                     if q_img or n_img_up:
                         ci1, ci2 = st.columns(2)
                         if q_img: ci1.image(q_img, caption="🖼️ Atual", width=150)
