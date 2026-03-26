@@ -654,7 +654,12 @@ with aba_avaliacoes:
                     # 👆 ================================ 👆
                     if q_img or n_img_up:
                         ci1, ci2 = st.columns(2)
-                        if q_img: ci1.image(q_img, caption="🖼️ Atual", width=150)
+                        if q_img:
+                            # 👇 Vacina aqui também!
+                            if os.path.exists(str(q_img)):
+                                ci1.image(q_img, caption="🖼️ Atual", width=150)
+                            else:
+                                ci1.warning("🖼️ Imagem original não encontrada.")
                         if n_img_up: ci2.image(n_img_up, caption="🆕 Nova", width=150)
                     # --- 3. LÓGICA DE RESPOSTAS E GABARITOS PADRONIZADA ---
                     c.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ? ORDER BY id', (id_editar,))
@@ -740,8 +745,17 @@ with aba_avaliacoes:
                         
                         if q_gab_img or locals().get('n_img_g_up'):
                             cg1, cg2 = st.columns(2)
-                            if q_gab_img: cg1.image(q_gab_img, caption="Atual no Banco", width=150)
-                            if locals().get('n_img_g_up'): cg2.image(n_img_g_up, caption="Nova Imagem", width=150)
+                        
+                        # 1. Imagem que já estava no banco (com a vacina de segurança)
+                        if q_gab_img:
+                            if os.path.exists(str(q_gab_img)):
+                                cg1.image(q_gab_img, caption="Atual no Banco", width=150)
+                            else:
+                                cg1.warning("🖼️ Resolução não encontrada no disco.")
+                        
+                        # 2. Imagem nova que você acabou de subir (não precisa de vacina)
+                        if locals().get('n_img_g_up'):
+                            cg2.image(n_img_g_up, caption="Nova Imagem", width=150)
 
                     elif n_tipo == "Discursiva":
                         st.markdown("**💡 Resolução Detalhada:**")
@@ -780,9 +794,18 @@ with aba_avaliacoes:
                         if gab_d_final.strip(): st.markdown(f'<span style="color:#3498db;">↳</span> {gerar_preview_web(gab_d_final)}', unsafe_allow_html=True)
                             
                         if q_gab_img or locals().get('n_img_g_up'):
-                            cg1, cg2 = st.columns(2)
-                            if q_gab_img: cg1.image(q_gab_img, caption="Atual no Banco", width=150)
-                            if locals().get('n_img_g_up'): cg2.image(n_img_g_up, caption="Nova", width=150)
+                            cg1, cg2 = st.columns(2) # <--- Agora está recuado (dentro do if)
+                        
+                        # 1. Imagem que já estava no banco (com a vacina de segurança)
+                        if q_gab_img:
+                            if os.path.exists(str(q_gab_img)):
+                                cg1.image(q_gab_img, caption="Atual no Banco", width=150)
+                            else:
+                                cg1.warning("🖼️ Resolução não encontrada no disco.")
+                        
+                        # 2. Imagem nova que você acabou de subir
+                        if locals().get('n_img_g_up'):
+                            cg2.image(n_img_g_up, caption="Nova Imagem", width=150)
 
                     
                     # --- 5. SALVAMENTO (MOTOR CORRIGIDO SEM ERRO DE SINTAXE) ---
@@ -1327,13 +1350,16 @@ with aba_avaliacoes:
                     for idx, q_item in enumerate(q_list, 1):
                         en_s = escapar_latex(q_item['enunciado'])
                         img_q = q_item.get('imagem')
+                        
+                        # Definindo as variáveis de espaço
+                        espaco_final = q_item['espaco']
+                        tam_final = q_item['espaco_linhas']
+                        
                         if img_q and not os.path.exists(img_q): img_q = None 
                         gab_txt = escapar_latex(str(q_item.get('gabarito', '')))
                         if gab_txt == "None": gab_txt = ""
                         gab_img = q_item.get('gabarito_imagem')
                         if gab_img and not os.path.exists(gab_img): gab_img = None
-                        
-                        # NOVO: O tipo da questão é salvo com segurança no dicionário d_pdf para ajudar o gabarito
                         
                         if q_item['tipo'] == "Múltipla Escolha":
                             if opt_emb_a: alts = buscar_e_embaralhar_alternativas(q_item['id'])
@@ -1343,8 +1369,10 @@ with aba_avaliacoes:
                                 if img_alt and not os.path.exists(img_alt): img_alt = None
                                 t_alts.append({"texto": escapar_latex(txt), "imagem": img_alt, "correta": corr})
                                 if corr: l_c = "ABCDE"[ia]
-                            d_pdf.append({"enunciado": en_s, "imagem": img_q, "pontos": q_item['pontos'], "tipo": q_item['tipo'], "alternativas": t_alts, "espaco": q_item['espaco'], "espaco_linhas": q_item['espaco_linhas'], "resposta_esperada": gab_txt, "gabarito_imagem": gab_img})
-                            qr_obj[idx] = f"{l_c}|{q_item['pontos']}|ME" # Na Múltipla Escolha
+                            # 1º APPEND (Múltipla Escolha)
+                            d_pdf.append({"enunciado": en_s, "imagem": img_q, "pontos": q_item['pontos'], "tipo": q_item['tipo'], "alternativas": t_alts, "espaco": espaco_final, "espaco_linhas": tam_final, "resposta_esperada": gab_txt, "gabarito_imagem": gab_img})
+                            qr_obj[idx] = f"{l_c}|{q_item['pontos']}|ME" 
+
                         elif q_item['tipo'] == "Verdadeiro ou Falso":
                             alts = buscar_alternativas_originais(q_item['id']) 
                             l_c, t_alts = "", []
@@ -1352,15 +1380,52 @@ with aba_avaliacoes:
                                 if img_alt and not os.path.exists(img_alt): img_alt = None
                                 t_alts.append({"texto": escapar_latex(txt), "imagem": img_alt, "correta": corr})
                                 if corr: l_c = "V" if ia == 0 else "F" 
-                            d_pdf.append({"enunciado": en_s, "imagem": img_q, "pontos": q_item['pontos'], "tipo": q_item['tipo'], "alternativas": t_alts, "espaco": q_item['espaco'], "espaco_linhas": q_item['espaco_linhas'], "resposta_esperada": gab_txt, "gabarito_imagem": gab_img})
-                            qr_obj[idx] = f"{l_c}|{q_item['pontos']}|VF" # No Verdadeiro ou Falso
+                            # 2º APPEND (V/F)
+                            # Mude q_item['espaco'] para espaco_final e q_item['espaco_linhas'] para tam_final
+                            d_pdf.append({
+                                "enunciado": en_s, 
+                                "imagem": img_q, 
+                                "pontos": q_item['pontos'], 
+                                "tipo": q_item['tipo'], 
+                                "alternativas": [], 
+                                "espaco": espaco_final,     # <--- Use a variável aqui
+                                "espaco_linhas": tam_final,  # <--- E aqui
+                                "resposta_esperada": gab_txt, 
+                                "gabarito_imagem": gab_img
+                            })
+                            qr_obj[idx] = f"{l_c}|{q_item['pontos']}|VF" 
+
                         elif q_item['tipo'] == "Numérica":
-                            d_pdf.append({"enunciado": en_s, "imagem": img_q, "pontos": q_item['pontos'], "tipo": q_item['tipo'], "alternativas": [], "espaco": q_item['espaco'], "espaco_linhas": q_item['espaco_linhas'], "resposta_esperada": gab_txt, "gabarito_imagem": gab_img})
-                            qr_obj[idx] = f"{str(q_item['gabarito']).zfill(2)}|{q_item['pontos']}|NUM" # Na Numérica
+                            # 3º APPEND (Numérica)
+                            # Mude q_item['espaco'] para espaco_final e q_item['espaco_linhas'] para tam_final
+                            d_pdf.append({
+                                "enunciado": en_s, 
+                                "imagem": img_q, 
+                                "pontos": q_item['pontos'], 
+                                "tipo": q_item['tipo'], 
+                                "alternativas": [], 
+                                "espaco": espaco_final,     # <--- Use a variável aqui
+                                "espaco_linhas": tam_final,  # <--- E aqui
+                                "resposta_esperada": gab_txt, 
+                                "gabarito_imagem": gab_img
+                            })
+                            qr_obj[idx] = f"{str(q_item['gabarito']).zfill(2)}|{q_item['pontos']}|NUM" 
                                 
-                        else:
-                            d_pdf.append({"enunciado": en_s, "imagem": img_q, "pontos": q_item['pontos'], "tipo": q_item['tipo'], "alternativas": [], "espaco": q_item['espaco'], "espaco_linhas": q_item['espaco_linhas'], "resposta_esperada": gab_txt, "gabarito_imagem": gab_img})
-                            qr_obj[idx] = "DISC|0.0|DISC" # Na Discursiva
+                        else: # Discursiva
+                            # 4º APPEND (Discursiva)
+                            # Mude q_item['espaco'] para espaco_final e q_item['espaco_linhas'] para tam_final
+                            d_pdf.append({
+                                "enunciado": en_s, 
+                                "imagem": img_q, 
+                                "pontos": q_item['pontos'], 
+                                "tipo": q_item['tipo'], 
+                                "alternativas": [], 
+                                "espaco": espaco_final,     # <--- Use a variável aqui
+                                "espaco_linhas": tam_final,  # <--- E aqui
+                                "resposta_esperada": gab_txt, 
+                                "gabarito_imagem": gab_img
+                            })
+                            qr_obj[idx] = "DISC|0.0|DISC"
                     
                     sufixo_arquivo = f"{sanitizar_nome(aluno_ra)}_{index}"
                     cod_secreto = f"0{v_num + 1}"
