@@ -33,43 +33,56 @@ def escapar_latex(texto):
 
 import re
 
+import re
+
 def gerar_preview_web(texto):
     if not texto: 
         return ""
     
     t = str(texto)
     
-    # 🧹 Faxina: Some com qualquer '£' antigo que tenha ficado no banco
+    # 🧹 Faxina: Some com qualquer '£' antigo
     t = t.replace('£', '')
     
-    # 1. Traduz negrito, itálico e sublinhado
+    # 1. Traduz formatações básicas
     t = re.sub(r'\\textbf\{(.*?)\}', r'**\1**', t, flags=re.DOTALL)
     t = re.sub(r'\\textit\{(.*?)\}', r'*\1*', t, flags=re.DOTALL)
     t = re.sub(r'\\underline\{(.*?)\}', r'<ins>\1</ins>', t, flags=re.DOTALL)
-    
-    # Mantém as cores
     t = re.sub(r'\\textcolor\{(.*?)\}\{(.*?)\}', r'<span style="color:\1;">\2</span>', t, flags=re.DOTALL)
-    
-    # 2. Traduz Títulos
     t = re.sub(r'\\section\*?\{(.*?)\}', r'### \1', t, flags=re.DOTALL)
     t = re.sub(r'\\subsection\*?\{(.*?)\}', r'#### \1', t, flags=re.DOTALL)
     
-    # 3. Traduz Listas
-    t = t.replace(r'\begin{itemize}', '')
-    t = t.replace(r'\end{itemize}', '')
-    t = t.replace(r'\begin{enumerate}', '')
-    t = t.replace(r'\end{enumerate}', '')
-    # Engole qualquer espaço/tabulação antes do \item e força pular uma linha
-    t = re.sub(r'\s*\\item\s+', r'\n* ', t)
+    # =========================================================
+    # 2. O SEGREDO AQUI: Tratando Listas e Enumerações
+    # =========================================================
     
-    # 4. Mantém o aviso visual da Tabela
+    # A. Enumerate (Numerado) - Troca o \item por "1. "
+    # O Streamlit é inteligente: se você colocar "1. " várias vezes, ele conta 1, 2, 3 sozinho!
+    def replace_enum(m):
+        return re.sub(r'\s*\\item\s*', r'\n1. ', m.group(1))
+    
+    # Esse (?:\[.*?\])? engole formatações extras tipo \begin{enumerate}[label=a)] para não vazar lixo na tela
+    t = re.sub(r'\\begin\{enumerate\}(?:\[.*?\])?(.*?)\\end\{enumerate\}', replace_enum, t, flags=re.DOTALL)
+    
+    # B. Itemize (Bolinhas) - Troca o \item por "* "
+    def replace_item(m):
+        return re.sub(r'\s*\\item\s*', r'\n* ', m.group(1))
+    
+    t = re.sub(r'\\begin\{itemize\}(?:\[.*?\])?(.*?)\\end\{itemize\}', replace_item, t, flags=re.DOTALL)
+    
+    # Fallback de segurança: se sobrou algum \item solto sem \begin, vira bolinha
+    t = re.sub(r'\s*\\item\s+', r'\n* ', t)
+
+    # =========================================================
+    
+    # 3. Mantém o aviso visual da Tabela
     t = re.sub(r'\\begin\{tabular\}.*?\\end\{tabular\}', 
                   r'<div style="padding:15px; background:#e3f2fd; border-left: 5px solid #2196f3; border-radius:5px; color:#0d47a1; margin:10px 0;">'
                   r'<b>📊 Tabela LaTeX Detectada</b><br>'
                   r'<small>O código está salvo! No PDF final ela sairá com todas as grades e colunas.</small></div>', 
                   t, flags=re.DOTALL)
     
-    # 5. Garante as quebras de linha
+    # 4. Garante as quebras de linha corretas para o Markdown
     t = t.replace('\n', '  \n')
     
     return t
