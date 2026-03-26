@@ -55,11 +55,6 @@ def gerar_preview_web(texto):
     # =========================================================
     # 2. O SEGREDO AQUI: Tratando Listas e Enumerações com HTML
     # =========================================================
-    
-    # =========================================================
-    # 2. O SEGREDO AQUI: Tratando Listas e Enumerações 
-    # =========================================================
-    
     # A. Enumerate (Dinâmico: Números ou Letras)
     def replace_enum(m):
         formato = m.group(1) or ""  
@@ -74,13 +69,14 @@ def gerar_preview_web(texto):
         letras = "abcdefghijklmnopqrstuvwxyz"
         
         for i, parte in enumerate(partes[1:]):
-            parte_limpa = parte.lstrip() 
+            # O re.sub "esmaga" qualquer Enter acidental, garantindo uma linha contínua
+            parte_limpa = re.sub(r'\s+', ' ', parte).strip() 
+            
             if usar_letras:
-                marcador = f"**{letras[i % 26]})**&nbsp;"
+                marcador = f"**{letras[i % 26]})**"
             else:
-                marcador = f"**{i + 1}.**&nbsp;"
+                marcador = f"**{i + 1}.**"
                 
-            # O \n\n garante que o Streamlit quebre a linha e crie um parágrafo perfeito
             texto_final += f"\n\n{marcador} {parte_limpa}"
             
         return texto_final

@@ -178,12 +178,12 @@ st.markdown("""
     }
     
 
-    /* 3. TÍTULOS (ENUNCIADO): Ajustado para NÃO encavalar nos botões */
+    /* 3. TÍTULOS (ENUNCIADO): Protege os botões E salva o texto na mesma linha */
     .stMarkdown p strong {
         font-size: 15px !important;
         color: #31333F !important;
-        display: block !important;
-        margin-bottom: 2px !important; /* Tiramos o negativo para não subir no texto */
+        display: inline-block !important; /* 🪄 A mágica está nesta palavra! */
+        margin-bottom: 2px !important; 
         margin-top: 5px !important;
     }
 
