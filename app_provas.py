@@ -1053,9 +1053,19 @@ with aba_avaliacoes:
                     
                     if q.get('imagem') or adj_img_up:
                         ci1, ci2 = st.columns(2)
-                        if q.get('imagem'): ci1.image(q['imagem'], caption="🖼️ Imagem Original", width=150)
-                        if adj_img_up: ci2.image(adj_img_up, caption="🆕 Imagem para a Prova", width=150)
+                        
+                        # Imagem que já estava no banco (precisa da vacina)
+                        if q.get('imagem'):
+                            if os.path.exists(str(q['imagem'])):
+                                ci1.image(q['imagem'], caption="🖼️ Imagem Original", width=150)
+                            else:
+                                ci1.warning(f"⚠️ Arquivo não encontrado: {q['imagem']}")
+                        
+                        # Imagem nova que você acabou de carregar
+                        if adj_img_up: 
+                            ci2.image(adj_img_up, caption="🆕 Imagem para a Prova", width=150)
 
+                    # 👁️ NÃO APAGUE: Esta linha desenha o preview azul do enunciado!
                     if novo_enun.strip():
                         st.markdown(f'<span style="color:#3498db;">↳</span> {gerar_preview_web(novo_enun)}', unsafe_allow_html=True)
                     
