@@ -30,7 +30,7 @@ def baixar_banco_do_cofre():
     if not supabase: return
     nome_arquivo = get_db_name()
     try:
-        res = supabase.storage.from_("BANCOS-SQLITE").download(nome_arquivo)
+        res = supabase.storage.from_("bancos-sqlite").download(nome_arquivo)
         with open(nome_arquivo, "wb") as f:
             f.write(res)
     except: pass
@@ -42,7 +42,7 @@ def salvar_banco_no_cofre():
     if os.path.exists(nome_arquivo):
         with open(nome_arquivo, "rb") as f:
             # O segredo é colocar o "true" entre aspas, como texto!
-            supabase.storage.from_("BANCOS-SQLITE").upload(
+            supabase.storage.from_("bancos-sqlite").upload(
                 file=f, 
                 path=nome_arquivo, 
                 file_options={"x-upsert": "true"}
