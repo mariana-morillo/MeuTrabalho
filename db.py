@@ -27,7 +27,7 @@ def baixar_banco_do_cofre():
     if not supabase: return
     nome_arquivo = get_db_name()
     try:
-        res = supabase.storage.from_("bancos-sqlite").download(nome_arquivo)
+        res = supabase.storage.from_("BANCOS-SQLITE").download(nome_arquivo)
         with open(nome_arquivo, "wb") as f:
             f.write(res)
     except: pass
