@@ -56,6 +56,10 @@ def gerar_preview_web(texto):
     # 2. O SEGREDO AQUI: Tratando Listas e Enumerações com HTML
     # =========================================================
     
+    # =========================================================
+    # 2. O SEGREDO AQUI: Tratando Listas e Enumerações 
+    # =========================================================
+    
     # A. Enumerate (Dinâmico: Números ou Letras)
     def replace_enum(m):
         formato = m.group(1) or ""  
@@ -72,18 +76,18 @@ def gerar_preview_web(texto):
         for i, parte in enumerate(partes[1:]):
             parte_limpa = parte.lstrip() 
             if usar_letras:
-                marcador = f"<b>{letras[i % 26]})</b>"
+                marcador = f"**{letras[i % 26]})**"
             else:
-                marcador = f"<b>{i + 1}.</b>"
+                marcador = f"**{i + 1}.**"
                 
-            # O <br> blinda o texto e impede o Streamlit de quebrar a linha acidentalmente!
-            texto_final += f"<br> {marcador} {parte_limpa}"
+            # O \n\n garante que o Streamlit quebre a linha e crie um parágrafo perfeito
+            texto_final += f"\n\n{marcador} {parte_limpa}"
             
         return texto_final
     
     t = re.sub(r'\\begin\{enumerate\}(?:\[(.*?)\])?(.*?)\\end\{enumerate\}', replace_enum, t, flags=re.DOTALL)
     
-    # B. Itemize (Bolinhas) blindado com HTML
+    # B. Itemize (Bolinhas) em Markdown limpo
     def replace_item(m):
         conteudo = m.group(1)
         partes = re.split(r'\s*\\item\s*', conteudo)
@@ -91,14 +95,14 @@ def gerar_preview_web(texto):
         
         for parte in partes[1:]:
             parte_limpa = parte.lstrip()
-            texto_final += f"<br> • {parte_limpa}"
+            texto_final += f"\n\n* {parte_limpa}"
             
         return texto_final
     
     t = re.sub(r'\\begin\{itemize\}(?:\[.*?\])?(.*?)\\end\{itemize\}', replace_item, t, flags=re.DOTALL)
     
     # Fallback de segurança
-    t = re.sub(r'\s*\\item\s+', r'<br> • ', t)
+    t = re.sub(r'\s*\\item\s+', r'\n\n* ', t)
     # =========================================================
     
     # 3. Mantém o aviso visual da Tabela
