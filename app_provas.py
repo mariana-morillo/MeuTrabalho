@@ -121,6 +121,7 @@ estilo = [
     ("H2 Subtít.", r"\subsection*{texto}"), 
     ("• Tópicos", r"\begin{itemize} \item item 1 \item item 2 \end{itemize}"), 
     ("1. Lista", r"\begin{enumerate} \item item 1 \item item 2 \end{enumerate}"), 
+    ("a) Lista (a,b)", r"\begin{enumerate}[a)] \item item 1 \item item 2 \end{enumerate}"),
     ("Tabela", r"\begin{tabular}{|c|c|} \hline Coluna A & Coluna B \\ \hline Dado 1 & Dado 2 \\ \hline \end{tabular}"), 
     ("Citação", r"\cite{referencia}"), 
     ("Referência", r"\ref{label}"),
