@@ -91,7 +91,7 @@ with st.sidebar:
 # =========================================================================
 def limpar_arquivos_temporarios():
     extensoes_lixo = ['.tex', '.log', '.aux', '.out', '.toc']
-    arquivos_protegidos = ['logo.png', 'banco_provas.db', 'app_provas.py', 'template_profissional.tex', 'template_gabarito.tex']
+    arquivos_protegidos = ['logo.png', get_db_name(), 'app_provas.py', 'template_profissional.tex', 'template_gabarito.tex']
     removidos = 0
     for f in os.listdir('.'):
         is_lixo_padrao = any(f.endswith(ext) for ext in extensoes_lixo)

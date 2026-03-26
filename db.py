@@ -57,11 +57,15 @@ def salvar_banco_no_cofre():
 def criar_backup_banco():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nome_backup = f"backup_questoes_{timestamp}.db"
+    banco_atual = get_db_name()
     try: 
-        shutil.copy2(get_db_name(), nome_backup) # Mudei para pegar o nome dinâmico
-        return nome_backup
+        if os.path.exists(banco_atual):
+            shutil.copy2(banco_atual, nome_backup)
+            return nome_backup
+        else:
+            return None
     except Exception as e: 
-        st.warning(f"Não foi possível criar backup local: {e}")
+        st.error(f"Erro ao criar backup: {e}")
         return None
 
 def backup_para_icloud():
