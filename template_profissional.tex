@@ -86,7 +86,7 @@
 
 % --- 2. QUESTÕES ---
 <% if colunas == 2 %>
-\begin{multicols}{2}
+\begin{multicols*}{2}
 <% endif %>
 \begin{questions}
 <% for q in questoes %>
@@ -123,7 +123,7 @@
 <% endfor %>
 \end{questions}
 <% if colunas == 2 %>
-\end{multicols}
+\end{multicols*}
 <% endif %>
 
 % --- 3. CARTÃO RESPOSTA (Otimizado para OpenCV) ---

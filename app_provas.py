@@ -1348,7 +1348,7 @@ with aba_avaliacoes:
                         
                     d_pdf, qr_obj = [], {}
                     for idx, q_item in enumerate(q_list, 1):
-                        en_s = escapar_latex(q_item['enunciado'])
+                        en_s = str(q_item['enunciado'])
                         img_q = q_item.get('imagem')
                         
                         # Definindo as variáveis de espaço
@@ -1356,7 +1356,7 @@ with aba_avaliacoes:
                         tam_final = q_item['espaco_linhas']
                         
                         if img_q and not os.path.exists(img_q): img_q = None 
-                        gab_txt = escapar_latex(str(q_item.get('gabarito', '')))
+                        gab_txt = str(q_item.get('gabarito', ''))
                         if gab_txt == "None": gab_txt = ""
                         gab_img = q_item.get('gabarito_imagem')
                         if gab_img and not os.path.exists(gab_img): gab_img = None
