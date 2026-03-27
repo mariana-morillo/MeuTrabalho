@@ -30,10 +30,10 @@ from db import (
 )
 
 # 3. A PRIMEIRA linha de comando Streamlit (obrigatório ser a primeira)
-st.set_page_config(page_title="Meu Estudei - FAM", page_icon="🎓", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Professorei", page_icon="🎓", layout="wide", initial_sidebar_state="collapsed")
 def mostrar_tela_login():
     st.image("https://api.dicebear.com/9.x/shapes/svg?seed=MeuEstudei", width=100)
-    st.title("🔐 Acesso Restrito - FAM")
+    st.title("🔐 Acesso Restrito -- Professores")
     st.markdown("Bem-vindo ao sistema de gestão de provas e turmas da Profª Mariana.")
 
     usuarios_permitidos = {
