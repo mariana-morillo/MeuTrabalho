@@ -457,10 +457,10 @@ with aba_avaliacoes:
                 # Cada alternativa em um card visual separado
                 with st.container(border=True):
                     # Linha 1: Barra de Ferramentas (Agora com Imagem em Popover)
-                    c_check, c_est, c_fx, c_img = st.columns([0.1, 0.25, 0.25, 0.25])
+                    c_chk, c_est, c_fx, c_img = st.columns([0.1, 0.25, 0.25, 0.25])
 
-                    # Substituímos o checkbox pelo texto da letra e a lógica de verificação
-                    c_check.markdown(f"<h3 style='margin:0px; color:#2980b9;'>{letras[i]}</h3>", unsafe_allow_html=True)
+                    # Apenas a letra grande centralizada
+                    c_chk.markdown(f"<div style='display: flex; align-items: center; justify-content: center; height: 40px; font-size: 18px; font-weight: bold; color: #31333F;'>{letras[i]}</div>", unsafe_allow_html=True)
                     corr = (i == alt_correta_idx)
                     with c_est:
                         with st.popover("🖋️ Estilo", use_container_width=True):
@@ -692,37 +692,49 @@ with aba_avaliacoes:
                     st.write("---")
                     
                     if n_tipo == "Múltipla Escolha":
+                        # 👇 🛡️ ESCUDO ANTI-PYLANCE 👇
+                        letras_adj = "ABCDEFGHIJ"
+                        alt_correta_idx_ed = 0
+                        j = 0
+                        # 👆 🛡️ ESCUDO ANTI-PYLANCE 👆
+
+                        st.write("---")
                         st.markdown("**💡 Resposta (Alternativas)**")
+                        st.caption("⚠️ Atenção: Edições nas alternativas SÓ vão para o PDF se você clicar em 'Atualizar no Banco' abaixo.")
+                        
                         n_opt_key = f"ed_n_opt_{id_editar}"
                         if n_opt_key not in st.session_state: st.session_state[n_opt_key] = max(len(alts_q), 4)
                         
                         cb1, cb2, _ = st.columns([0.12, 0.12, 0.76])
                         if cb1.button("➕ Linha", key=f"ed_add_alt_{id_editar}"): st.session_state[n_opt_key] += 1; st.rerun()
                         if cb2.button("➖ Linha", key=f"ed_rm_alt_{id_editar}") and st.session_state[n_opt_key] > 2: st.session_state[n_opt_key] -= 1; st.rerun()
-                        # 👇 A MÁGICA DA ESCOLHA ÚNICA NA EDIÇÃO 👇
-                        letras_adj = "ABCDEFGHIJ"
-                        # Descobre qual era a correta no banco para já vir marcada
+
                         idx_correta_bd = 0
                         for idx_b, alt_b in enumerate(alts_q):
-                            if alt_b[1]: # se 'correta' for True
+                            if alt_b[1]: 
                                 idx_correta_bd = idx_b
                                 break
                                 
                         st.write("")
+                        
+                        def format_letra_ed(indice):
+                            return letras_adj[indice] if indice < len(letras_adj) else str(indice)
+
                         alt_correta_idx_ed = st.radio(
                             "🎯 Selecione qual é a alternativa correta:", 
                             options=range(st.session_state[n_opt_key]), 
-                            format_func=lambda x: letras_adj[x], 
+                            format_func=format_letra_ed, 
                             index=idx_correta_bd if idx_correta_bd < st.session_state[n_opt_key] else 0,
                             horizontal=True, 
                             key=f"ed_radio_correta_{id_editar}"
                         )
+
                         for j in range(st.session_state[n_opt_key]):
                             with st.container(border=True):
                                 c_chk, c_est, c_fx, c_img = st.columns([0.1, 0.25, 0.25, 0.25])
                                 
-                                # Apenas a letra grande, sem o checkbox
-                                c_chk.markdown(f"<h3 style='margin:0px; color:#2980b9;'>{letras_adj[j]}</h3>", unsafe_allow_html=True)
+                                letra_atual = letras_adj[j] if j < len(letras_adj) else str(j)
+                                c_chk.markdown(f"<div style='display: flex; align-items: center; justify-content: center; height: 40px; font-size: 18px; font-weight: bold; color: #31333F;'>{letra_atual}</div>", unsafe_allow_html=True)
                                 corr = (j == alt_correta_idx_ed)
                                 
                                 k_alt = f"ed_t_alt_v_{id_editar}_{j}"
@@ -731,28 +743,28 @@ with aba_avaliacoes:
                                 with c_est:
                                     with st.popover("🖋️ Estilo", use_container_width=True):
                                         c_b = st.columns(2)
-                                        for idx, (l, cmd) in enumerate(estilo): 
-                                            c_b[idx%2].button(l, key=f"ed_ae_{id_editar}_{j}_{idx}", on_click=injetar_texto, args=(cmd, k_alt))
+                                        for idx_estilo, (l, cmd) in enumerate(estilo): 
+                                            c_b[idx_estilo%2].button(l, key=f"ed_ae_{id_editar}_{j}_{idx_estilo}", on_click=injetar_texto, args=(cmd, k_alt))
                                 
                                 with c_fx:
                                     with st.popover("🧮 f(x)", use_container_width=True):
                                         tg, tm, tc, tf, tt = st.tabs(["αβγ", "Mat", "Cálc", "🌊", "🔥"])
-                                        with tg:
+                                        with tg: 
                                             cb_g = st.columns(4)
-                                            for idx, (l, cmd) in enumerate(gregas): cb_g[idx%4].button(l, key=f"ed_ag_{id_editar}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
-                                        with tm:
+                                            for idx_g, (l, cmd) in enumerate(gregas): cb_g[idx_g%4].button(l, key=f"ed_ag_{id_editar}_{j}_{idx_g}", on_click=injetar_direto, args=(cmd, k_alt))
+                                        with tm: 
                                             cb_m = st.columns(3)
-                                            for idx, (l, cmd) in enumerate(matematica): cb_m[idx%3].button(l, key=f"ed_am_{id_editar}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
-                                        with tc:
+                                            for idx_m, (l, cmd) in enumerate(matematica): cb_m[idx_m%3].button(l, key=f"ed_am_{id_editar}_{j}_{idx_m}", on_click=injetar_direto, args=(cmd, k_alt))
+                                        with tc: 
                                             cb_c = st.columns(3)
-                                            for idx, (l, cmd) in enumerate(calculo): cb_c[idx%3].button(l, key=f"ed_ac_{id_editar}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
-                                        with tf:
+                                            for idx_c, (l, cmd) in enumerate(calculo): cb_c[idx_c%3].button(l, key=f"ed_ac_{id_editar}_{j}_{idx_c}", on_click=injetar_direto, args=(cmd, k_alt))
+                                        with tf: 
                                             cb_f = st.columns(1)
-                                            for idx, (l, cmd) in enumerate(fluidos): cb_f[0].button(l, key=f"ed_af_{id_editar}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
-                                        with tt:
+                                            for idx_f, (l, cmd) in enumerate(fluidos): cb_f[0].button(l, key=f"ed_af_{id_editar}_{j}_{idx_f}", on_click=injetar_direto, args=(cmd, k_alt))
+                                        with tt: 
                                             cb_t = st.columns(1)
-                                            for idx, (l, cmd) in enumerate(termo): cb_t[0].button(l, key=f"ed_at_{id_editar}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
-
+                                            for idx_t, (l, cmd) in enumerate(termo): cb_t[0].button(l, key=f"ed_at_{id_editar}_{j}_{idx_t}", on_click=injetar_direto, args=(cmd, k_alt))
+                                
                                 with c_img:
                                     with st.popover("🖼️ Imagem", use_container_width=True):
                                         up_ia = st.file_uploader("Trocar", type=["png", "jpg", "jpeg"], key=f"ed_ia_{id_editar}_{j}", label_visibility="collapsed")
@@ -767,7 +779,7 @@ with aba_avaliacoes:
 
                                 alts_imagens_novas[j] = up_ia if up_ia else (alts_q[j][2] if j < len(alts_q) else None)
                                 alts_modificadas.append((txt_a, corr))
-
+                                
                     elif n_tipo == "Verdadeiro ou Falso":
                         idx_banco = 0 if any(a[0] == "Verdadeiro" and a[1] for a in alts_q) else 1
                         st.markdown("**💡 Resposta**")
@@ -1158,6 +1170,12 @@ with aba_avaliacoes:
                     alts_imagens_novas_adj = {}
 
                     if q['tipo'] == "Múltipla Escolha":
+                        # 👇 🛡️ ESCUDO ANTI-PYLANCE 👇
+                        letras_adj = "ABCDEFGHIJ"
+                        alt_correta_idx_adj = 0
+                        j = 0
+                        # 👆 🛡️ ESCUDO ANTI-PYLANCE 👆
+
                         st.write("---")
                         st.markdown("**💡 Resposta (Alternativas)**")
                         st.caption("⚠️ Atenção: Edições nas alternativas SÓ vão para o PDF se você clicar em 'Atualizar no Banco' abaixo.")
@@ -1175,12 +1193,32 @@ with aba_avaliacoes:
                         if cb1.button("➕ Linha", key=f"adj_add_alt_{q['id']}"): st.session_state[n_opt_key_adj] += 1; st.rerun()
                         if cb2.button("➖ Linha", key=f"adj_rm_alt_{q['id']}") and st.session_state[n_opt_key_adj] > 2: st.session_state[n_opt_key_adj] -= 1; st.rerun()
 
-                        letras_adj = "ABCDEFGHIJ"
+                        idx_correta_bd = 0
+                        for idx_b, alt_b in enumerate(alts_q_adj):
+                            if alt_b[1]: 
+                                idx_correta_bd = idx_b
+                                break
+                                
+                        st.write("")
+                        
+                        def format_letra_adj(indice):
+                            return letras_adj[indice] if indice < len(letras_adj) else str(indice)
+
+                        alt_correta_idx_adj = st.radio(
+                            "🎯 Selecione qual é a alternativa correta:", 
+                            options=range(st.session_state[n_opt_key_adj]), 
+                            format_func=format_letra_adj, 
+                            index=idx_correta_bd if idx_correta_bd < st.session_state[n_opt_key_adj] else 0,
+                            horizontal=True, 
+                            key=f"adj_radio_correta_{q['id']}"
+                        )
+
                         for j in range(st.session_state[n_opt_key_adj]):
                             with st.container(border=True):
                                 c_chk, c_est, c_fx, c_img = st.columns([0.1, 0.25, 0.25, 0.25])
-                                # Apenas a letra grande, sem o checkbox
-                                c_chk.markdown(f"<h3 style='margin:0px; color:#2980b9;'>{letras_adj[j]}</h3>", unsafe_allow_html=True)
+                                
+                                letra_atual = letras_adj[j] if j < len(letras_adj) else str(j)
+                                c_chk.markdown(f"<div style='display: flex; align-items: center; justify-content: center; height: 40px; font-size: 18px; font-weight: bold; color: #31333F;'>{letra_atual}</div>", unsafe_allow_html=True)
                                 corr = (j == alt_correta_idx_adj)
                                 
                                 k_alt = f"adj_t_alt_v_{q['id']}_{j}"
@@ -1189,26 +1227,28 @@ with aba_avaliacoes:
                                 with c_est:
                                     with st.popover("🖋️ Estilo", use_container_width=True):
                                         c_b = st.columns(2)
-                                        for idx, (l, cmd) in enumerate(estilo): c_b[idx%2].button(l, key=f"adj_ae_{q['id']}_{j}_{idx}", on_click=injetar_texto, args=(cmd, k_alt))
+                                        for idx_estilo, (l, cmd) in enumerate(estilo): 
+                                            c_b[idx_estilo%2].button(l, key=f"adj_ae_{q['id']}_{j}_{idx_estilo}", on_click=injetar_texto, args=(cmd, k_alt))
+                                
                                 with c_fx:
                                     with st.popover("🧮 f(x)", use_container_width=True):
                                         tg, tm, tc, tf, tt = st.tabs(["αβγ", "Mat", "Cálc", "🌊", "🔥"])
                                         with tg: 
-                                            cg_g = st.columns(4)
-                                            for idx, (l, cmd) in enumerate(gregas): cg_g[idx%4].button(l, key=f"adj_ag_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            cb_g = st.columns(4)
+                                            for idx_g, (l, cmd) in enumerate(gregas): cb_g[idx_g%4].button(l, key=f"adj_ag_{q['id']}_{j}_{idx_g}", on_click=injetar_direto, args=(cmd, k_alt))
                                         with tm: 
-                                            cg_m = st.columns(3)
-                                            for idx, (l, cmd) in enumerate(matematica): cg_m[idx%3].button(l, key=f"adj_am_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            cb_m = st.columns(3)
+                                            for idx_m, (l, cmd) in enumerate(matematica): cb_m[idx_m%3].button(l, key=f"adj_am_{q['id']}_{j}_{idx_m}", on_click=injetar_direto, args=(cmd, k_alt))
                                         with tc: 
-                                            cg_c = st.columns(3)
-                                            for idx, (l, cmd) in enumerate(calculo): cg_c[idx%3].button(l, key=f"adj_ac_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            cb_c = st.columns(3)
+                                            for idx_c, (l, cmd) in enumerate(calculo): cb_c[idx_c%3].button(l, key=f"adj_ac_{q['id']}_{j}_{idx_c}", on_click=injetar_direto, args=(cmd, k_alt))
                                         with tf: 
-                                            cg_f = st.columns(1)
-                                            for idx, (l, cmd) in enumerate(fluidos): cg_f[0].button(l, key=f"adj_af_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
+                                            cb_f = st.columns(1)
+                                            for idx_f, (l, cmd) in enumerate(fluidos): cb_f[0].button(l, key=f"adj_af_{q['id']}_{j}_{idx_f}", on_click=injetar_direto, args=(cmd, k_alt))
                                         with tt: 
-                                            cg_t = st.columns(1)
-                                            for idx, (l, cmd) in enumerate(termo): cg_t[0].button(l, key=f"adj_at_{q['id']}_{j}_{idx}", on_click=injetar_direto, args=(cmd, k_alt))
-                                        
+                                            cb_t = st.columns(1)
+                                            for idx_t, (l, cmd) in enumerate(termo): cb_t[0].button(l, key=f"adj_at_{q['id']}_{j}_{idx_t}", on_click=injetar_direto, args=(cmd, k_alt))
+                                
                                 with c_img:
                                     with st.popover("🖼️ Imagem", use_container_width=True):
                                         up_ia = st.file_uploader("Trocar", type=["png", "jpg", "jpeg"], key=f"adj_ia_{q['id']}_{j}", label_visibility="collapsed")
