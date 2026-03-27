@@ -1363,7 +1363,13 @@ with aba_avaliacoes:
                         
                         espaco_final = q_item['espaco']
                         tam_final = q_item['espaco_linhas']
-                        
+                        # 2. A MÁGICA DAS LINHAS FLEXÍVEIS: Calculando a quantidade
+                        num_linhas_calc = 0
+                        if espaco_final == "Linhas":
+                            try:
+                                num_linhas_calc = int(float(tam_final) * 1.8) # 1 cm = aprox 1.8 linhas
+                            except:
+                                num_linhas_calc = 5 # Valor de segurança
                         if img_q and not os.path.exists(img_q): img_q = None 
                         gab_txt = str(q_item.get('gabarito', ''))
                         if gab_txt == "None": gab_txt = ""
@@ -1379,7 +1385,7 @@ with aba_avaliacoes:
                                 t_alts.append({"texto": escapar_latex(txt), "imagem": img_alt, "correta": corr})
                                 if corr: l_c = "ABCDE"[ia]
                             # 1º APPEND (Múltipla Escolha)
-                            d_pdf.append({"enunciado": en_s, "imagem": img_q, "pontos": q_item['pontos'], "tipo": q_item['tipo'], "alternativas": t_alts, "espaco": espaco_final, "espaco_linhas": tam_final, "resposta_esperada": gab_txt, "gabarito_imagem": gab_img})
+                            d_pdf.append({"enunciado": en_s, "imagem": img_q, "pontos": q_item['pontos'], "tipo": q_item['tipo'], "alternativas": t_alts, "espaco": espaco_final, "espaco_linhas": tam_final,"num_linhas": num_linhas_calc, "resposta_esperada": gab_txt, "gabarito_imagem": gab_img})
                             qr_obj[idx] = f"{l_c}|{q_item['pontos']}|ME" 
 
                         elif q_item['tipo'] == "Verdadeiro ou Falso":
@@ -1399,6 +1405,7 @@ with aba_avaliacoes:
                                 "alternativas": [], 
                                 "espaco": espaco_final,     # <--- Use a variável aqui
                                 "espaco_linhas": tam_final,  # <--- E aqui
+                                "num_linhas": num_linhas_calc,
                                 "resposta_esperada": gab_txt, 
                                 "gabarito_imagem": gab_img
                             })
@@ -1415,6 +1422,7 @@ with aba_avaliacoes:
                                 "alternativas": [], 
                                 "espaco": espaco_final,     # <--- Use a variável aqui
                                 "espaco_linhas": tam_final,  # <--- E aqui
+                                "num_linhas": num_linhas_calc,
                                 "resposta_esperada": gab_txt, 
                                 "gabarito_imagem": gab_img
                             })
@@ -1431,6 +1439,7 @@ with aba_avaliacoes:
                                 "alternativas": [], 
                                 "espaco": espaco_final,     # <--- Use a variável aqui
                                 "espaco_linhas": tam_final,  # <--- E aqui
+                                "num_linhas": num_linhas_calc,
                                 "resposta_esperada": gab_txt, 
                                 "gabarito_imagem": gab_img
                             })
