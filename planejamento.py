@@ -2,6 +2,7 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
+from db import salvar_banco_no_cofre
 
 def renderizar_aba_fabrica():
     with sqlite3.connect('banco_provas.db') as conn:
@@ -55,7 +56,8 @@ def renderizar_aba_fabrica():
                             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""", 
                             (nome_disc, ementa, obj_g, comp, egr, prog, meto, recu, aval, aps_mestre, bib_b, bib_c, orf_f))
                         conn.commit()
-                        st.success("Plano mestre salvo!")
+                        salvar_banco_no_cofre()
+                        st.success("Plano mestre salvo na nuvem!")
                         st.rerun()
 
             with t_aula:
@@ -71,6 +73,7 @@ def renderizar_aba_fabrica():
                         else:
                             conn.execute("UPDATE roteiro_mestre SET tema=? WHERE titulo_modelo=? AND num_aula=?", (r['Tema'], nome_disc, r['Aula']))
                     conn.commit()
+                    salvar_banco_no_cofre()
                     st.rerun()
 
                 st.write("---")
@@ -116,5 +119,6 @@ def renderizar_aba_fabrica():
                                              (tema_f, tipo_f, obj_f, cont_f, meto_f, aps_f, ref_f, l_slides, l_over, l_ext, 
                                               ativ_f, ativ_l, for_f, for_l, nome_disc, a_det))
                                 conn.commit()
-                                st.success("Molde global atualizado!")
+                                salvar_banco_no_cofre()
+                                st.success("Molde global atualizado na nuvem!")
                                 st.rerun()

@@ -10,16 +10,14 @@ def sanitizar_nome(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return "".join([c for c in nfkd if not unicodedata.category(c).startswith('M')]).replace(" ", "_")
 
-import re
-
 def escapar_latex(texto):
     if not texto: 
         return ""
     texto = str(texto)
-    
-    # O escudo inteligente: protege apenas o "%" e deixa os seus comandos de lista funcionarem!
+    # Protege o % (comentário no LaTeX) mas deixa passar o \% já escapado
+    # e também evita problemas com símbolos comuns de engenharia
     texto = re.sub(r'(?<!\\)%', r'\%', texto)
-    
+    texto = re.sub(r'(?<!\\)&', r'\&', texto) # Adicionei o & por segurança (comum em roteiros)
     return texto
 
 

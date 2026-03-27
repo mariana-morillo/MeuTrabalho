@@ -8,9 +8,10 @@ import json
 import time
 from datetime import datetime, timedelta
 from latex_utils import gerar_preview_web
+from db import salvar_banco_no_cofre, get_db_name
 
 def renderizar_aba_sala():
-    with sqlite3.connect('banco_provas.db') as conn:
+    with sqlite3.connect(get_db_name()) as conn:
         # 1. SETUP DE TABELAS
         conn.execute('''CREATE TABLE IF NOT EXISTS diario_conteudo (id INTEGER PRIMARY KEY, turma_id INTEGER, disciplina TEXT, data TEXT, conteudo_real TEXT, observacao TEXT)''')
         conn.execute('''CREATE TABLE IF NOT EXISTS atividades_sala (id INTEGER PRIMARY KEY, turma_id INTEGER, disciplina TEXT, data TEXT, aluno_ra TEXT, entregou INTEGER)''')
@@ -118,8 +119,10 @@ def renderizar_aba_sala():
                         def modal_feedback(ra, nome):
                             st.write(f"Dar ponto para: **{nome}**")
                             def b_salvar(m, p):
-                                with sqlite3.connect('banco_provas.db') as c:
+                                with sqlite3.connect(get_db_name()) as c:
                                     c.execute("INSERT INTO logs_comportamento (aluno_ra, turma_id, data, pontos, comentario, tipo) VALUES (?,?,?,?,?,?)", (ra, id_t_sel, data_str_global, p, m, "Feedback"))
+                                    c.commit()
+                                salvar_banco_no_cofre()
                                 st.rerun()
                             c1, c2 = st.columns(2)
                             if c1.button("❤️ Ajuda"): b_salvar("Ajudando os colegas", 1.0)
@@ -165,7 +168,7 @@ def renderizar_aba_sala():
                             for ra, stt in st.session_state.m_ch.items():
                                 conn.execute("DELETE FROM diario WHERE turma_id=? AND data=? AND aluno_ra=?", (id_t_sel, data_str_global, ra))
                                 conn.execute("INSERT INTO diario (turma_id, data, aluno_ra, presente, status) VALUES (?,?,?,?,?)", (id_t_sel, data_str_global, ra, stt!="Ausente", stt))
-                            conn.commit(); st.success("Salvo!"); st.rerun()
+                            conn.commit(); salvar_banco_no_cofre(); st.success("Salvo!"); st.rerun()
                         
                         cols_f = st.columns(6)
                         for idx, row in alunos_sala.iterrows():
@@ -192,7 +195,7 @@ def renderizar_aba_sala():
                             for ra, ent in st.session_state.m_ativ.items():
                                 conn.execute("DELETE FROM atividades_sala WHERE turma_id=? AND disciplina=? AND data=? AND aluno_ra=?", (id_t_sel, disc_sel, data_str_global, ra))
                                 conn.execute("INSERT INTO atividades_sala (turma_id, disciplina, data, aluno_ra, entregou) VALUES (?,?,?,?,?)", (id_t_sel, disc_sel, data_str_global, ra, ent))
-                            conn.commit(); st.success("Salvo!"); st.rerun()
+                            conn.commit(); salvar_banco_no_cofre(); st.success("Salvo!"); st.rerun()
                         cols_f = st.columns(6)
                         for idx, row in alunos_sala.iterrows():
                             ra = row['ra']; ent_hj = st.session_state.m_ativ.get(ra, 0)
@@ -279,10 +282,12 @@ def renderizar_aba_sala():
                                         pts_v = c_pts.number_input("Nota:", 0.0, 10.0, 1.0, 0.5, key=f"pg_{i}")
                                         
                                         if c_btn.button("💾 Lançar", key=f"bg_{i}", use_container_width=True):
-                                            with sqlite3.connect('banco_provas.db') as c_n:
+                                            with sqlite3.connect(get_db_name()) as c_n:
                                                 for al in g:
                                                     c_n.execute("DELETE FROM notas_flexiveis WHERE turma_id=? AND disciplina=? AND matricula=? AND avaliacao=?", (id_t_sel, disc_sel, al['ra'], atividade_escolhida))
                                                     c_n.execute("INSERT INTO notas_flexiveis (turma_id, disciplina, matricula, avaliacao, nota) VALUES (?,?,?,?,?)", (id_t_sel, disc_sel, al['ra'], atividade_escolhida, pts_v))
+                                                c_n.commit()
+                                            salvar_banco_no_cofre()
                                             st.toast(f"Nota {pts_v} salva para o Grupo {i+1}!")
 
                     elif modo_aula == "📖 Registrar Diário":
@@ -293,7 +298,7 @@ def renderizar_aba_sala():
                         if st.button("💾 Salvar Diário", type="primary", use_container_width=True):
                             conn.execute("DELETE FROM diario_conteudo WHERE turma_id=? AND disciplina=? AND data=?", (id_t_sel, disc_sel, data_str_global))
                             conn.execute("INSERT INTO diario_conteudo (turma_id, disciplina, data, conteudo_real) VALUES (?,?,?,?)", (id_t_sel, disc_sel, data_str_global, c_real))
-                            conn.commit(); st.success("Diário atualizado!")
+                            conn.commit(); salvar_banco_no_cofre(); st.success("Diário atualizado!")
 
                     elif modo_aula == "📩 Responder Dúvidas":
                         df_duv = pd.read_sql(f"SELECT d.*, a.nome FROM duvidas_alunos d JOIN alunos a ON d.aluno_ra = a.ra WHERE d.turma_id={id_t_sel} AND d.disciplina='{disc_sel}' ORDER BY d.respondida ASC, d.id DESC", conn)
@@ -304,4 +309,4 @@ def renderizar_aba_sala():
                                 st.markdown(f"<div style='border-radius:10px; padding:15px; margin-bottom:10px; background:{bg};'><b>{d_row['nome']}</b>: {d_row['mensagem']}</div>", unsafe_allow_html=True)
                                 if d_row['respondida'] == 0:
                                     if st.button("✅ Resolvido", key=f"ld_{d_row['id']}"):
-                                        conn.execute(f"UPDATE duvidas_alunos SET respondida=1 WHERE id={d_row['id']}"); conn.commit(); st.rerun()
+                                        conn.execute(f"UPDATE duvidas_alunos SET respondida=1 WHERE id={d_row['id']}"); conn.commit(); salvar_banco_no_cofre(); st.rerun()

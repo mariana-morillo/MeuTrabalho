@@ -16,6 +16,7 @@ from correcao import renderizar_aba_correcao
 from sala import renderizar_aba_sala
 from planejamento import renderizar_aba_fabrica
 from turmas import renderizar_aba_turmas
+from nuvem import subir_imagem_nuvem, baixar_imagem_para_latex
 
 # 2. O COMBO COMPLETO E REVISADO DO DB.PY (Agora com excluir_questao!)
 from db import (
@@ -539,19 +540,16 @@ with aba_avaliacoes:
                 st.image(gab_img_final, caption="👁️ Preview da Imagem da Resolução", width=400)
         st.write("---")
         if st.button("💾 Guardar Questão", type="primary", width="stretch", disabled=not pode_gravar):
-            img_n = sanitizar_nome(i_c.name) if i_c else None
-            if i_c:
-                with open(img_n, "wb") as f: f.write(i_c.getbuffer())
+            # 1. Sobe a imagem do enunciado para o Supabase
+            img_n = subir_imagem_nuvem(i_c, f"enun_{sanitizar_nome(i_c.name)}") if i_c else None
             
-            gab_img_n = sanitizar_nome(gab_img_final.name) if gab_img_final else None
-            if gab_img_final:
-                with open(gab_img_n, "wb") as f: f.write(gab_img_final.getbuffer())
+            # 2. Sobe a imagem do gabarito para o Supabase
+            gab_img_n = subir_imagem_nuvem(gab_img_final, f"gab_{sanitizar_nome(gab_img_final.name)}") if gab_img_final else None
             
+            # 3. Sobe as imagens das alternativas para o Supabase
             alts_para_banco = []
-            for txt, corr, img_obj in alts_final:
-                nome_img_alt = sanitizar_nome(img_obj.name) if img_obj else None
-                if img_obj:
-                    with open(nome_img_alt, "wb") as f: f.write(img_obj.getbuffer())
+            for idx_alt, (txt, corr, img_obj) in enumerate(alts_final):
+                nome_img_alt = subir_imagem_nuvem(img_obj, f"alt_{idx_alt}_{sanitizar_nome(img_obj.name)}") if img_obj else None
                 alts_para_banco.append((txt, corr, nome_img_alt))
 
             # Adicione , uso_c no final dos parênteses da função:
@@ -815,12 +813,11 @@ with aba_avaliacoes:
                     if cb_s.button("💾 Salvar Alterações", type="primary", use_container_width=True):
                         i_f = q_img
                         if n_img_up: 
-                            i_f = sanitizar_nome(n_img_up.name)
-                            with open(i_f, "wb") as f: f.write(n_img_up.getbuffer())
+                            i_f = subir_imagem_nuvem(n_img_up, f"edit_enun_{sanitizar_nome(n_img_up.name)}")
+                            
                         i_g_f = q_gab_img
                         if 'n_img_g_up' in locals() and n_img_g_up:
-                            i_g_f = sanitizar_nome(n_img_g_up.name)
-                            with open(i_g_f, "wb") as f: f.write(n_img_g_up.getbuffer())
+                            i_g_f = subir_imagem_nuvem(n_img_g_up, f"edit_gab_{sanitizar_nome(n_img_g_up.name)}")
 
                         val_gab = gab_d_final if 'gab_d_final' in locals() else q_gab_disc
                         c.execute('''UPDATE questoes SET disciplina=?, assunto=?, dificuldade=?, enunciado=?, pontos=?, espaco_resposta=?, espaco_linhas=?, tipo=?, imagem=?, gabarito_imagem=?, gabarito_discursivo=?, uso_quest=? WHERE id=?''', (n_disc, n_ass, n_dif, n_enun_final, n_pts, n_esp, n_tam, n_tipo, i_f, i_g_f, val_gab, n_uso, id_editar))
@@ -830,9 +827,7 @@ with aba_avaliacoes:
                             for j, (t, co) in enumerate(alts_modificadas):
                                 img_obj = alts_imagens_novas.get(j); img_bd = None
                                 if hasattr(img_obj, 'getbuffer'):
-                                    nome_f = sanitizar_nome(img_obj.name)
-                                    with open(nome_f, "wb") as f: f.write(img_obj.getbuffer())
-                                    img_bd = nome_f
+                                    img_bd = subir_imagem_nuvem(img_obj, f"edit_alt_{id_editar}_{j}_{sanitizar_nome(img_obj.name)}")
                                 else: img_bd = img_obj
                                 c.execute('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (?, ?, ?, ?)', (id_editar, t, co, img_bd))
                         conn.commit(); 
@@ -845,12 +840,10 @@ with aba_avaliacoes:
                         conn.close() # 🔴 ADICIONE ESTA LINHA AQUI! Libera o banco para o db.py
                         i_f = q_img
                         if n_img_up: 
-                            i_f = sanitizar_nome(n_img_up.name)
-                            with open(i_f, "wb") as f: f.write(n_img_up.getbuffer())
+                            i_f = subir_imagem_nuvem(n_img_up, f"nova_enun_{sanitizar_nome(n_img_up.name)}")
                         i_g_f = q_gab_img
                         if 'n_img_g_up' in locals() and n_img_g_up:
-                            i_g_f = sanitizar_nome(n_img_g_up.name)
-                            with open(i_g_f, "wb") as f: f.write(n_img_g_up.getbuffer())
+                            i_g_f = subir_imagem_nuvem(n_img_g_up, f"nova_gab_{sanitizar_nome(n_img_g_up.name)}")
                             
                         val_gab = gab_d_final if 'gab_d_final' in locals() else q_gab_disc
                         
@@ -859,9 +852,7 @@ with aba_avaliacoes:
                             for j, (t, co) in enumerate(alts_modificadas):
                                 img_obj = alts_imagens_novas.get(j); img_bd = None
                                 if hasattr(img_obj, 'getbuffer'):
-                                    nome_f = sanitizar_nome(img_obj.name)
-                                    with open(nome_f, "wb") as f: f.write(img_obj.getbuffer())
-                                    img_bd = nome_f
+                                    img_bd = subir_imagem_nuvem(img_obj, f"nova_alt_{id_editar}_{j}_{sanitizar_nome(img_obj.name)}")
                                 else: img_bd = img_obj
                                 alts_para_inserir.append((t, co, img_bd))
                         
@@ -1349,24 +1340,25 @@ with aba_avaliacoes:
                     d_pdf, qr_obj = [], {}
                     for idx, q_item in enumerate(q_list, 1):
                         en_s = str(q_item['enunciado'])
-                        img_q = q_item.get('imagem')
+                        # Baixa a imagem da nuvem e cria um arquivo temporário físico para o LaTeX ler
+                        img_q_banco = q_item.get('imagem')
+                        img_q = baixar_imagem_para_latex(img_q_banco, f"temp_q_{idx}.png")
                         
-                        # Definindo as variáveis de espaço
                         espaco_final = q_item['espaco']
                         tam_final = q_item['espaco_linhas']
                         
                         if img_q and not os.path.exists(img_q): img_q = None 
                         gab_txt = str(q_item.get('gabarito', ''))
                         if gab_txt == "None": gab_txt = ""
-                        gab_img = q_item.get('gabarito_imagem')
-                        if gab_img and not os.path.exists(gab_img): gab_img = None
+                        gab_img_banco = q_item.get('gabarito_imagem')
+                        gab_img = baixar_imagem_para_latex(gab_img_banco, f"temp_gab_{idx}.png")
                         
                         if q_item['tipo'] == "Múltipla Escolha":
                             if opt_emb_a: alts = buscar_e_embaralhar_alternativas(q_item['id'])
                             else: alts = buscar_alternativas_originais(q_item['id'])
                             l_c, t_alts = "", []
-                            for ia, (txt, corr, img_alt) in enumerate(alts): 
-                                if img_alt and not os.path.exists(img_alt): img_alt = None
+                            for ia, (txt, corr, img_alt_banco) in enumerate(alts): 
+                                img_alt = baixar_imagem_para_latex(img_alt_banco, f"temp_alt_{idx}_{ia}.png")
                                 t_alts.append({"texto": escapar_latex(txt), "imagem": img_alt, "correta": corr})
                                 if corr: l_c = "ABCDE"[ia]
                             # 1º APPEND (Múltipla Escolha)
@@ -1376,8 +1368,8 @@ with aba_avaliacoes:
                         elif q_item['tipo'] == "Verdadeiro ou Falso":
                             alts = buscar_alternativas_originais(q_item['id']) 
                             l_c, t_alts = "", []
-                            for ia, (txt, corr, img_alt) in enumerate(alts): 
-                                if img_alt and not os.path.exists(img_alt): img_alt = None
+                            for ia, (txt, corr, img_alt_banco) in enumerate(alts): 
+                                img_alt = baixar_imagem_para_latex(img_alt_banco, f"temp_alt_{idx}_{ia}.png")
                                 t_alts.append({"texto": escapar_latex(txt), "imagem": img_alt, "correta": corr})
                                 if corr: l_c = "V" if ia == 0 else "F" 
                             # 2º APPEND (V/F)

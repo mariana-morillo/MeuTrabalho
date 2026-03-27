@@ -54,6 +54,18 @@ def salvar_banco_no_cofre():
 # =========================================================================
 # --- MANUTENÇÃO E BACKUP ---
 # =========================================================================
+def buscar_dados(query, params=()):
+    """Função única para buscar dados e retornar um DataFrame"""
+    with sqlite3.connect(get_db_name()) as conn:
+        return pd.read_sql(query, conn, params=params)
+
+def executar_comando(query, params=()):
+    """Função única para inserir ou atualizar dados e mandar pra nuvem"""
+    with sqlite3.connect(get_db_name()) as conn:
+        conn.execute(query, params)
+        conn.commit()
+    salvar_banco_no_cofre()
+    
 def criar_backup_banco():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nome_backup = f"backup_questoes_{timestamp}.db"
@@ -149,6 +161,7 @@ def criar_base_de_dados():
         cursor.execute('''CREATE TABLE IF NOT EXISTS configuracoes (id INTEGER PRIMARY KEY CHECK (id = 1), instituicao TEXT, professor TEXT, departamento TEXT, curso TEXT, instrucoes TEXT)''')
 
         conn.commit()
+    salvar_banco_no_cofre()
 
 def limpar_dados_teste():
     tabelas_para_limpar = ['resultados', 'correcoes_detalhadas', 'logs_comportamento', 'diario', 'atividades_sala']
@@ -160,6 +173,7 @@ def limpar_dados_teste():
             except Exception as e:
                 st.sidebar.error(f"Erro ao limpar {tabela}: {e}")
         conn.commit()
+    salvar_banco_no_cofre() # <-- Adicione aqui
     return True
 
 def inserir_questao(disc, ass, dif, enun, alts, pts, tipo, gab_disc=None, img=None, espaco="Linhas", espaco_linhas=4, gab_img=None, uso_quest="Prova Oficial"):
@@ -183,6 +197,7 @@ def inserir_questao(disc, ass, dif, enun, alts, pts, tipo, gab_disc=None, img=No
                 cursor.execute('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (?, ?, ?, ?)', (q_id, txt, int(corr), img_alt))
         
         conexao.commit()
+    salvar_banco_no_cofre()
 
 def buscar_e_embaralhar_alternativas(q_id):
     with sqlite3.connect(get_db_name()) as conexao:
@@ -213,6 +228,7 @@ def salvar_configuracoes(inst, prof, dep, curso, instr):
         cursor.execute('''INSERT OR REPLACE INTO configuracoes (id, instituicao, professor, departamento, curso, instrucoes)
                           VALUES (1, ?, ?, ?, ?, ?)''', (inst, prof, dep, curso, instr))
         conexao.commit()
+    salvar_banco_no_cofre()
 
 def excluir_questao(q_id):
     # Mesma trava de segurança adicionada aqui
@@ -221,6 +237,7 @@ def excluir_questao(q_id):
         cursor.execute('DELETE FROM alternativas WHERE questao_id = ?', (q_id,))
         cursor.execute('DELETE FROM questoes WHERE id = ?', (q_id,))
         conexao.commit()
+    salvar_banco_no_cofre()
 
 def obter_assuntos_da_disciplina(disciplina):
     with sqlite3.connect(get_db_name()) as conexao:
@@ -268,6 +285,7 @@ def salvar_resultado_prova(nome, ra, disc, versao, nota, avaliacao="P1"):
         else:
             cursor.execute('INSERT INTO resultados (aluno_nome, aluno_ra, disciplina, versao, nota, data_hora, avaliacao) VALUES (?, ?, ?, ?, ?, ?, ?)', (nome, ra, disc, versao, nota, agora, avaliacao))
         conexao.commit()
+    salvar_banco_no_cofre()
     backup_para_icloud()
 
 def salvar_feedback_detalhado(ra, disc, prova, q_num, status, feedback):
@@ -276,6 +294,7 @@ def salvar_feedback_detalhado(ra, disc, prova, q_num, status, feedback):
         conn.execute('''INSERT INTO correcoes_detalhadas (aluno_ra, disciplina, prova_nome, questao_num, status, feedback_ia) 
                         VALUES (?, ?, ?, ?, ?, ?)''', (ra, disc, prova, q_num, status, feedback))
         conn.commit()
+    salvar_banco_no_cofre()
 
 def detectar_duplicata(enunciado, disciplina):
     with sqlite3.connect(get_db_name()) as conexao:

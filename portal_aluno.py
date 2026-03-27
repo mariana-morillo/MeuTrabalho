@@ -4,7 +4,7 @@ import sqlite3
 import re
 from datetime import datetime
 # --- ADICIONE ESTA LINHA AQUI ---
-from db import baixar_banco_do_cofre, criar_base_de_dados, get_db_name
+from db import baixar_banco_do_cofre, criar_base_de_dados, get_db_name, salvar_banco_no_cofre
 
 # 1.1 Sincronização de Interface (Fix do emoji cortado e cards padronizados)
 st.set_page_config(page_title="Portal do Aluno FAM", page_icon="🎓", layout="centered")
@@ -74,6 +74,7 @@ def executar_comando(query, params=()):
     with sqlite3.connect(get_db_name()) as conn:
         conn.execute(query, params)
         conn.commit()
+    salvar_banco_no_cofre() # <--- ISSO SALVA TUDO NA NUVEM NA HORA!
 # --- ADICIONE ESTAS 4 LINHAS AQUI ---
 try:
     executar_comando("ALTER TABLE diario ADD COLUMN disciplina TEXT DEFAULT 'Geral'")
@@ -492,8 +493,7 @@ if st.session_state.aluno_logado_ra:
                 """, unsafe_allow_html=True)
                 
                 if btn_salvar.button("💾 Salvar Visual", type="primary", use_container_width=True):
-                    with sqlite3.connect('banco_provas.db') as c:
-                        c.execute("UPDATE alunos SET avatar_style=?, avatar_opts=? WHERE ra=?", (novo_est, final_opts_str, ra_ativo))
+                    executar_comando("UPDATE alunos SET avatar_style=?, avatar_opts=? WHERE ra=?", (novo_est, final_opts_str, ra_ativo))
                     st.success("Visual salvo!")
                     st.rerun()
 
@@ -778,10 +778,8 @@ if st.session_state.aluno_logado_ra:
                     if st.button("🚀 Enviar Dúvida", type="primary", use_container_width=True):
                         if duvida_txt.strip():
                             try:
-                                with sqlite3.connect('banco_provas.db') as conn_duv:
-                                    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-                                    conn_duv.execute("INSERT INTO duvidas_alunos (turma_id, disciplina, aluno_ra, data, mensagem) VALUES (?, ?, ?, ?, ?)", (int(t_id_ativa), d_ativa, ra_aluno, agora, duvida_txt))
-                                    conn_duv.commit()
+                                agora = datetime.now().strftime("%d/%m/%Y %H:%M")
+                                executar_comando("INSERT INTO duvidas_alunos (turma_id, disciplina, aluno_ra, data, mensagem) VALUES (?, ?, ?, ?, ?)", (int(t_id_ativa), d_ativa, ra_aluno, agora, duvida_txt))
                                 st.success("✅ Dúvida enviada com sucesso! Fique de olho na próxima aula para o retorno.")
                             except Exception as e:
                                 st.error(f"Erro ao enviar a dúvida. Detalhe: {e}")
@@ -857,11 +855,8 @@ if st.session_state.aluno_logado_ra:
                                             
                                             if acertos > 0:
                                                 pontos = acertos * 1.0  # Dobro de pontos por ser difícil
-                                                import sqlite3
-                                                with sqlite3.connect('banco_provas.db') as conn_xp:
-                                                    conn_xp.execute("INSERT INTO logs_comportamento (aluno_ra, turma_id, data, pontos, comentario, tipo) VALUES (?,?,?,?,?,?)", 
+                                                executar_comando("INSERT INTO logs_comportamento (aluno_ra, turma_id, data, pontos, comentario, tipo) VALUES (?,?,?,?,?,?)", 
                                                                 (ra_aluno, int(t_id_ativa), datetime.now().strftime("%d/%m/%Y"), pontos, f"Desafio XP: {assunto_aula}", "Acadêmico"))
-                                                    conn_xp.commit()
                                                 st.success(f"🔥 Sensacional! +{pontos} pontos de XP ganhos!")
                                                 st.balloons()
                                             else:

@@ -10,7 +10,7 @@ import os
 os.environ["DYLD_LIBRARY_PATH"] = "/opt/homebrew/lib:/usr/local/lib"
 
 # Importa a função de gravar o feedback que já extraímos para o db.py!
-from db import salvar_feedback_detalhado
+from db import salvar_feedback_detalhado, salvar_banco_no_cofre, get_db_name
 
 def recortar_e_alinhar_folha(img_orig):
     h_orig, w_orig = img_orig.shape[:2]
@@ -55,7 +55,7 @@ def recortar_e_alinhar_folha(img_orig):
     return img_redim
 
 def renderizar_aba_correcao():
-    with sqlite3.connect('banco_provas.db') as conn:
+    with sqlite3.connect(get_db_name()) as conn:
         st.markdown("**🔍 Filtro**")
         turmas_df = pd.read_sql("SELECT id, nome FROM turmas", conn)
         if turmas_df.empty:
@@ -230,10 +230,12 @@ def renderizar_aba_correcao():
                         if st.button(f"💾 Confirmar e Salvar: {dados_qr['nome']}", key=f"sv_{idx_img}", type="primary"):
                             
                             # 1. SALVA A NOTA NA PLANILHA OFICIAL (Apenas se não for Treino)
+                            # 1. SALVA A NOTA NA PLANILHA OFICIAL (Apenas se não for Treino)
                             if "Treino" not in tipo_lido:
                                 conn.execute("DELETE FROM notas_flexiveis WHERE turma_id=? AND disciplina=? AND matricula=? AND avaliacao=?", (int(id_t_corr), d_corr_sel, dados_qr['ra'], prova_final_nome))
                                 conn.execute("INSERT INTO notas_flexiveis (turma_id, disciplina, matricula, avaliacao, nota) VALUES (?,?,?,?,?)", (int(id_t_corr), d_corr_sel, dados_qr['ra'], prova_final_nome, float(nota_final_lote)))
                                 conn.commit()
+                                salvar_banco_no_cofre()
                                 st.toast("✅ Nota Oficial enviada para a Planilha/Boletim!")
                             else:
                                 st.toast("🏋️ Atividade de Treino: Apenas o feedback foi gravado.")

@@ -9,7 +9,7 @@
 \usepackage{tabularx} 
 \usepackage{multicol} 
 \usepackage{amsmath, amssymb}
-\usepackage{enumitem}         % Ajuda a controlar melhor as listas se necessário
+\usepackage[shortlabels]{enumitem}        % Ajuda a controlar melhor as listas se necessário
 
 % --- CONFIGURAÇÕES DAS COLUNAS ---
 \setlength{\columnsep}{1cm}       
@@ -109,7 +109,7 @@
     \end{choices}
     <% endif %>
 
-    <% if q.tipo == "Discursiva" or q.tipo == "Numérica" %>
+    <% if q.espaco != "Nenhum" %>
         \vspace{0.3cm}
         <% if q.espaco == "Linhas" %>
             \fillwithlines{<< q.espaco_linhas >>cm}
