@@ -11,3 +11,4 @@ numpy
 pyzbar
 Pillow
 matplotlib
+extra-streamlit-components
