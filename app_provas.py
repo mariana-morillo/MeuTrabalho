@@ -34,11 +34,8 @@ st.set_page_config(page_title="Professorei", page_icon="🎓", layout="wide", in
 # --- 🍪 MÁGICA 1: INICIALIZA O GERENCIADOR DE COOKIES ---
 import extra_streamlit_components as stx
 
-@st.cache_resource
-def get_manager():
-    return stx.CookieManager()
-
-cookie_manager = get_manager()
+# Nas versões novas do Streamlit, instanciamos direto com uma chave (sem cache!)
+cookie_manager = stx.CookieManager(key="gerenciador_cookies_fam")
 def mostrar_tela_login():
     st.image("https://api.dicebear.com/9.x/shapes/svg?seed=MeuEstudei", width=100)
     st.title("🔐 Acesso Restrito -- Professores")
