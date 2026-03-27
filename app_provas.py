@@ -31,6 +31,14 @@ from db import (
 
 # 3. A PRIMEIRA linha de comando Streamlit (obrigatório ser a primeira)
 st.set_page_config(page_title="Professorei", page_icon="🎓", layout="wide", initial_sidebar_state="collapsed")
+# --- 🍪 MÁGICA 1: INICIALIZA O GERENCIADOR DE COOKIES ---
+import extra_streamlit_components as stx
+
+@st.cache_resource(experimental_allow_widgets=True)
+def get_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_manager()
 def mostrar_tela_login():
     st.image("https://api.dicebear.com/9.x/shapes/svg?seed=MeuEstudei", width=100)
     st.title("🔐 Acesso Restrito -- Professores")
@@ -52,7 +60,8 @@ def mostrar_tela_login():
         if st.form_submit_button("Entrar no Sistema", use_container_width=True):
             if user in usuarios_permitidos and usuarios_permitidos[user] == pw:
                 st.session_state.usuario_logado = user
-                
+                # 🍪 MÁGICA 2: SALVA O COOKIE POR 30 DIAS NO NAVEGADOR!
+                cookie_manager.set("usuario_logado", user, expires_at=datetime.now() + timedelta(days=30))
                 with st.spinner("Buscando seus dados no cofre... ☁️"):
                     baixar_banco_do_cofre() # Puxa o seu arquivo .db
                     criar_base_de_dados()   # Garante que as tabelas estão lá
@@ -60,8 +69,20 @@ def mostrar_tela_login():
             else:
                 st.error("⚠️ Usuário ou senha incorretos.")
 if "usuario_logado" not in st.session_state:
-    mostrar_tela_login() # <--- Aqui tem 1 TAB de espaço
-    st.stop()            # <--- Aqui também tem 1 TAB                
+    # O sistema procura silenciosamente no navegador se você já logou antes
+    cookie_salvo = cookie_manager.get("usuario_logado")
+    
+    if cookie_salvo:
+        # Se achou o cookie, recria a sua sessão sem pedir senha!
+        st.session_state.usuario_logado = cookie_salvo
+        with st.spinner("Restaurando sua sessão... ☁️"):
+            baixar_banco_do_cofre()
+            criar_base_de_dados()
+        st.rerun()
+    else:
+        # Se não achou cookie nenhum (primeiro acesso), bloqueia e pede a senha
+        mostrar_tela_login()
+        st.stop()                
 
 # =========================================================================
 # SE CHEGOU AQUI, O PROFESSOR ESTÁ LOGADO!
