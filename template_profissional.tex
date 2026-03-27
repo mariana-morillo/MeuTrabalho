@@ -105,9 +105,9 @@
     \question \textbf{(<< q.pontos >> pontos)} << q.enunciado >>
 
     <% if q.imagem %>
-    \begin{center}
-        \includegraphics[max width=0.95\linewidth, max height=8cm, keepaspectratio]{<< q.imagem >>}
-    \end{center}
+    \par\vspace{0.3cm}
+    {\centering \includegraphics[max width=0.95\linewidth, max height=8cm, keepaspectratio]{<< q.imagem >>} \par}
+    \vspace{0.1cm}
     <% endif %>
 
     <% if q.alternativas %>
@@ -122,7 +122,7 @@
     <% endif %>
 
     <% if q.espaco != "Nenhum" %>
-        \vspace{0.3cm}
+        \par\allowbreak % 👈 A CHAVE MÁGICA: Autoriza o LaTeX a fatiar as linhas!
         <% if q.espaco == "Linhas" %>
             \fillwithlines{<< q.espaco_linhas >>cm}
         <% elif q.espaco == "Quadriculado" %>
