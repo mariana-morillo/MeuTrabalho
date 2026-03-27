@@ -65,7 +65,7 @@ def executar_comando(query, params=()):
         conn.execute(query, params)
         conn.commit()
     salvar_banco_no_cofre()
-    
+
 def criar_backup_banco():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nome_backup = f"backup_questoes_{timestamp}.db"
@@ -217,16 +217,26 @@ def buscar_alternativas_originais(q_id):
 def carregar_configuracoes():
     with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
-        cursor.execute('SELECT instituicao, professor, departamento, curso, instrucoes FROM configuracoes WHERE id = 1')
+        # Cria as colunas novas caso seja a primeira vez rodando
+        try: cursor.execute("ALTER TABLE configuracoes ADD COLUMN titulo TEXT DEFAULT 'Avaliação 01'")
+        except: pass
+        try: cursor.execute("ALTER TABLE configuracoes ADD COLUMN logo TEXT")
+        except: pass
+        
+        cursor.execute('SELECT instituicao, professor, departamento, curso, instrucoes, titulo, logo FROM configuracoes WHERE id = 1')
         res = cursor.fetchone()
     return res
 
-def salvar_configuracoes(inst, prof, dep, curso, instr):
+def salvar_configuracoes(inst, prof, dep, curso, instr, titulo, logo):
     with sqlite3.connect(get_db_name()) as conexao:
         cursor = conexao.cursor()
-        # O 'INSERT OR REPLACE' garante que ele crie a linha se ela não existir
-        cursor.execute('''INSERT OR REPLACE INTO configuracoes (id, instituicao, professor, departamento, curso, instrucoes)
-                          VALUES (1, ?, ?, ?, ?, ?)''', (inst, prof, dep, curso, instr))
+        try: cursor.execute("ALTER TABLE configuracoes ADD COLUMN titulo TEXT DEFAULT 'Avaliação 01'")
+        except: pass
+        try: cursor.execute("ALTER TABLE configuracoes ADD COLUMN logo TEXT")
+        except: pass
+        
+        cursor.execute('''INSERT OR REPLACE INTO configuracoes (id, instituicao, professor, departamento, curso, instrucoes, titulo, logo)
+                          VALUES (1, ?, ?, ?, ?, ?, ?, ?)''', (inst, prof, dep, curso, instr, titulo, logo))
         conexao.commit()
     salvar_banco_no_cofre()
 

@@ -123,9 +123,9 @@
 
     <% if q.espaco != "Nenhum" %>
         \vspace{0.2cm}
-        <% if q.espaco == "Linhas" and q.num_linhas > 0 %>
+        <% if q.espaco == "Linhas" and q.get('num_linhas', 0) > 0 %>
             % 👇 A VERDADEIRA MÁGICA: Linhas independentes que o multicol consegue fatiar 👇
-            <% for i in range(q.num_linhas) %>
+            <% for i in range(q.get('num_linhas', 0)) %>
                 \noindent\rule{\linewidth}{0.4pt}\par\vspace{0.55cm}
             <% endfor %>
         <% elif q.espaco == "Quadriculado" %>

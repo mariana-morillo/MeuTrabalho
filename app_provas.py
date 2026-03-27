@@ -883,12 +883,13 @@ with aba_avaliacoes:
         st.markdown("**📌1. Cabeçalho**")
         
         # Leve ajuste de segurança aqui para não dar erro na descompactação se o banco retornar vazio
+        # Leve ajuste de segurança aqui para não dar erro na descompactação se o banco retornar vazio
         if "cabecalho_carregado" not in st.session_state:
             cfg = carregar_configuracoes()
-            if cfg:
-                st.session_state.inp_inst, st.session_state.inp_prof, st.session_state.inp_dep, st.session_state.inp_cur, st.session_state.inp_instruc = cfg
+            if cfg and len(cfg) == 7: # Puxa as 7 coisas, incluindo titulo e logo
+                st.session_state.inp_inst, st.session_state.inp_prof, st.session_state.inp_dep, st.session_state.inp_cur, st.session_state.inp_instruc, st.session_state.inp_titulo, st.session_state.logo_banco = cfg
             else:
-                st.session_state.inp_inst, st.session_state.inp_prof, st.session_state.inp_dep, st.session_state.inp_cur, st.session_state.inp_instruc = "", "", "", "", ""
+                st.session_state.inp_inst, st.session_state.inp_prof, st.session_state.inp_dep, st.session_state.inp_cur, st.session_state.inp_instruc, st.session_state.inp_titulo, st.session_state.logo_banco = "", "", "", "", "", "Avaliação 01", None
             st.session_state.inp_turma, st.session_state.inp_data = "", ""
             st.session_state.cabecalho_carregado = True
 
@@ -899,18 +900,28 @@ with aba_avaliacoes:
         depto, curs, turma_p = c_cab3.text_input("Disciplina", key="inp_dep"), c_cab4.text_input("Curso", key="inp_cur"), c_cab5.text_input("Turma", key="inp_turma")
         c_cab6, c_cab7 = st.columns(2)
         data_p = c_cab6.text_input("Data", key="inp_data")
-        titulo_doc = c_cab7.text_input("Título do Documento", value="Avaliação 01", key="inp_titulo")
+        titulo_doc = c_cab7.text_input("Título do Documento", key="inp_titulo")
+        
         # --- A GRANDE NOVIDADE: O OBJETIVO DO DOCUMENTO ---
         tipo_doc_gen = st.radio("🎯 Objetivo do Documento:", ["Prova Oficial (Boletim)", "Atividade de Treino (Só Feedback)"], horizontal=True)
+        
         logo_up = st.file_uploader("Logo da Instituição (PNG/JPG)", type=["png", "jpg", "jpeg"])
-      
+        # Aviso visual de que o logo já está salvo!
+        if st.session_state.get('logo_banco') and not logo_up:
+            st.caption("🖼️ Logo padrão já carregado do banco. Envie outro apenas se quiser trocar.")
+            
         instrucoes = st.text_area("Instruções", key="inp_instruc")
         
         # --- 🎮 SEUS BOTÕES DE CONTROLE DO CABEÇALHO ADICIONADOS AQUI ---
         cc1, cc2, cc3 = st.columns([0.4, 0.3, 0.3])
         if cc1.button("💾 Salvar como Padrão", use_container_width=True):
-            salvar_configuracoes(inst_nome, prof_nome, depto, curs, instrucoes)
-            salvar_banco_no_cofre()
+            # Se a professora enviou um logo novo, sobe pro Supabase. Se não, mantém o atual.
+            logo_salvar = st.session_state.get('logo_banco')
+            if logo_up:
+                logo_salvar = subir_imagem_nuvem(logo_up, f"logo_{sanitizar_nome(logo_up.name)}")
+                st.session_state.logo_banco = logo_salvar
+                
+            salvar_configuracoes(inst_nome, prof_nome, depto, curs, instrucoes, titulo_doc, logo_salvar)
             st.success("✅ Cabeçalho salvo no banco de dados!")
             
         if cc2.button("🔄 Puxar do Banco", use_container_width=True):
@@ -924,6 +935,8 @@ with aba_avaliacoes:
             st.session_state.inp_dep = ""
             st.session_state.inp_cur = ""
             st.session_state.inp_instruc = ""
+            st.session_state.inp_titulo = ""
+            st.session_state.logo_banco = None
             st.rerun()
         
         st.write("---")
@@ -1316,6 +1329,10 @@ with aba_avaliacoes:
                 if logo_up is not None:
                     nome_logo = sanitizar_nome(logo_up.name)
                     with open(nome_logo, "wb") as f: f.write(logo_up.getbuffer())
+                elif st.session_state.get('logo_banco'):
+                    # Se não enviou agora, mas tem no banco, baixa do Supabase!
+                    img_logo_temp = baixar_imagem_para_latex(st.session_state.logo_banco, "temp_logo.png")
+                    if img_logo_temp: nome_logo = img_logo_temp
                 elif not os.path.exists("logo.png"):
                     cv2.imwrite("logo.png", np.zeros((100, 100, 3), dtype=np.uint8) + 255)
 
