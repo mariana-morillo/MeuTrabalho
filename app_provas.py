@@ -443,7 +443,15 @@ with aba_avaliacoes:
             if cb1.button("➕ Linha", key="cad_add_l"): st.session_state.n_opt += 1; st.rerun()
             if cb2.button("➖ Linha", key="cad_rm_l") and st.session_state.n_opt > 2: st.session_state.n_opt -= 1; st.rerun()
             
-            
+            # 👇 A MÁGICA DA ESCOLHA ÚNICA 👇
+            st.write("")
+            alt_correta_idx = st.radio(
+                "🎯 Selecione qual é a alternativa correta:", 
+                options=range(st.session_state.n_opt), 
+                format_func=lambda x: letras[x], 
+                horizontal=True, 
+                key="cad_radio_correta"
+            )
 
             for i in range(st.session_state.n_opt):
                 # Cada alternativa em um card visual separado
@@ -451,8 +459,9 @@ with aba_avaliacoes:
                     # Linha 1: Barra de Ferramentas (Agora com Imagem em Popover)
                     c_check, c_est, c_fx, c_img = st.columns([0.1, 0.25, 0.25, 0.25])
 
-                    corr = c_check.checkbox(letras[i], key=f"c_alt_cad_{i}")
-                    
+                    # Substituímos o checkbox pelo texto da letra e a lógica de verificação
+                    c_check.markdown(f"<h3 style='margin:0px; color:#2980b9;'>{letras[i]}</h3>", unsafe_allow_html=True)
+                    corr = (i == alt_correta_idx)
                     with c_est:
                         with st.popover("🖋️ Estilo", use_container_width=True):
                             c = st.columns(2)
@@ -690,13 +699,31 @@ with aba_avaliacoes:
                         cb1, cb2, _ = st.columns([0.12, 0.12, 0.76])
                         if cb1.button("➕ Linha", key=f"ed_add_alt_{id_editar}"): st.session_state[n_opt_key] += 1; st.rerun()
                         if cb2.button("➖ Linha", key=f"ed_rm_alt_{id_editar}") and st.session_state[n_opt_key] > 2: st.session_state[n_opt_key] -= 1; st.rerun()
-
+                        # 👇 A MÁGICA DA ESCOLHA ÚNICA NA EDIÇÃO 👇
+                        letras_adj = "ABCDEFGHIJ"
+                        # Descobre qual era a correta no banco para já vir marcada
+                        idx_correta_bd = 0
+                        for idx_b, alt_b in enumerate(alts_q):
+                            if alt_b[1]: # se 'correta' for True
+                                idx_correta_bd = idx_b
+                                break
+                                
+                        st.write("")
+                        alt_correta_idx_ed = st.radio(
+                            "🎯 Selecione qual é a alternativa correta:", 
+                            options=range(st.session_state[n_opt_key]), 
+                            format_func=lambda x: letras_adj[x], 
+                            index=idx_correta_bd if idx_correta_bd < st.session_state[n_opt_key] else 0,
+                            horizontal=True, 
+                            key=f"ed_radio_correta_{id_editar}"
+                        )
                         for j in range(st.session_state[n_opt_key]):
                             with st.container(border=True):
                                 c_chk, c_est, c_fx, c_img = st.columns([0.1, 0.25, 0.25, 0.25])
                                 
-                                corr_v = bool(alts_q[j][1]) if j < len(alts_q) else False
-                                corr = c_chk.checkbox(letras[j], value=corr_v, key=f"ed_c_alt_{id_editar}_{j}")
+                                # Apenas a letra grande, sem o checkbox
+                                c_chk.markdown(f"<h3 style='margin:0px; color:#2980b9;'>{letras_adj[j]}</h3>", unsafe_allow_html=True)
+                                corr = (j == alt_correta_idx_ed)
                                 
                                 k_alt = f"ed_t_alt_v_{id_editar}_{j}"
                                 if k_alt not in st.session_state: st.session_state[k_alt] = alts_q[j][0] if j < len(alts_q) else ""
@@ -1152,8 +1179,9 @@ with aba_avaliacoes:
                         for j in range(st.session_state[n_opt_key_adj]):
                             with st.container(border=True):
                                 c_chk, c_est, c_fx, c_img = st.columns([0.1, 0.25, 0.25, 0.25])
-                                corr_v = bool(alts_q_adj[j][1]) if j < len(alts_q_adj) else False
-                                corr = c_chk.checkbox(letras_adj[j], value=corr_v, key=f"adj_c_alt_{q['id']}_{j}")
+                                # Apenas a letra grande, sem o checkbox
+                                c_chk.markdown(f"<h3 style='margin:0px; color:#2980b9;'>{letras_adj[j]}</h3>", unsafe_allow_html=True)
+                                corr = (j == alt_correta_idx_adj)
                                 
                                 k_alt = f"adj_t_alt_v_{q['id']}_{j}"
                                 if k_alt not in st.session_state: st.session_state[k_alt] = alts_q_adj[j][0] if j < len(alts_q_adj) else ""
