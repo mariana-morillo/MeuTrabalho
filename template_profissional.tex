@@ -9,11 +9,23 @@
 \usepackage{tabularx} 
 \usepackage{multicol} 
 \usepackage{amsmath, amssymb}
-\usepackage[shortlabels]{enumitem}        % Ajuda a controlar melhor as listas se necessário
+\usepackage[shortlabels]{enumitem}        
 
-% --- CONFIGURAÇÕES DAS COLUNAS ---
+% --- CONFIGURAÇÕES DAS COLUNAS (O FIM DO EFEITO CHICLETE) ---
 \setlength{\columnsep}{1cm}       
 \setlength{\columnseprule}{0.4pt} 
+\raggedcolumns % 👈 MÁGICA 1: Proíbe o LaTeX de esticar as colunas no meio da prova!
+
+% 👈 MÁGICA 2: Corta a gordura (espaços enormes) entre as alternativas (A, B, C, D)
+\renewcommand{\choiceshook}{
+  \setlength{\itemsep}{0pt}
+  \setlength{\topsep}{0.1cm}
+}
+% 👈 MÁGICA 3: Mantém as questões levemente separadas, mas sem exageros
+\renewcommand{\questionshook}{
+  \setlength{\itemsep}{0.3cm}
+}
+
 % MARGENS
 \geometry{left=1cm, right=1cm, top=1cm, bottom=2cm}
 
