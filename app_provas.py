@@ -910,6 +910,14 @@ with aba_avaliacoes:
         if st.session_state.get('logo_banco') and not logo_up:
             st.caption("🖼️ Logo padrão já carregado do banco. Envie outro apenas se quiser trocar.")
             
+        # --- NOVO: BARRA DE ESTILO PARA INSTRUÇÕES ---
+        c_inst_btn, _ = st.columns([0.15, 0.85])
+        with c_inst_btn:
+            with st.popover("🖋️ Estilo", use_container_width=True):
+                c_b = st.columns(2)
+                for i, (l, cmd) in enumerate(estilo): 
+                    c_b[i%2].button(l, key=f"inst_est_{i}", on_click=injetar_texto, args=(cmd, "inp_instruc"))
+                    
         instrucoes = st.text_area("Instruções", key="inp_instruc")
         
         # --- 🎮 SEUS BOTÕES DE CONTROLE DO CABEÇALHO ADICIONADOS AQUI ---
@@ -1457,7 +1465,7 @@ with aba_avaliacoes:
                     cab = {
                         "titulo_documento": escapar_latex(titulo_doc), "logo_path": nome_logo, "instituicao": escapar_latex(inst_nome),
                         "professor_nome": escapar_latex(prof_nome), "disciplina_nome": escapar_latex(d_p), "data": escapar_latex(data_p),
-                        "turma": escapar_latex(turma_p), "curso": escapar_latex(curs), "instrucoes_texto": escapar_latex(instrucoes),
+                        "turma": escapar_latex(turma_p), "curso": escapar_latex(curs), "instrucoes_texto": instrucoes,
                         "num_copias": 1, "qr_path": qr_fn, "versao_letra": let_v, "colunas": num_colunas,
                         "aluno_nome": escapar_latex(aluno_nome) if modo_id != "Em Branco (Sem Nome/RA)" else "",
                         "aluno_ra": aluno_ra if modo_id != "Em Branco (Sem Nome/RA)" else "",
