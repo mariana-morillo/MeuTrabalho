@@ -53,7 +53,8 @@ def renderizar_aba_turmas():
             n_sem = col_c2.text_input("Semestre:", value=sem_recente, key="cad_s_t_vF")
             if st.button("🚀 Criar Turma", use_container_width=True):
                 if n_t:
-                    conn.execute(text('INSERT INTO turmas (nome, semestre) VALUES (:n, :s)'), {"n": n_t, "s": n_sem})
+                    # --- SUBSTITUA A LINHA 56 POR ESTA: ---
+                    conn.execute(text('INSERT INTO turmas (nome, semestre) VALUES (:n, :s) ON CONFLICT (nome) DO NOTHING'), {"n": n_t, "s": n_sem})
                     conn.commit(); st.success("Turma criada!"); st.rerun()
 
         # --- ABA 3: IMPORTAR ALUNOS ---
