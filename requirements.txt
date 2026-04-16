@@ -12,3 +12,5 @@ pyzbar
 Pillow
 matplotlib
 extra-streamlit-components
+psycopg2-binary
+SQLAlchemy
