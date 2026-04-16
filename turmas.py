@@ -1,14 +1,14 @@
 # turmas.py
 import streamlit as st
 import pandas as pd
-import sqlite3
 import plotly.express as plex 
 import holidays
 import calendar
 from datetime import datetime, timedelta
 
 def renderizar_aba_turmas():
-    with sqlite3.connect('banco_provas.db') as conn:
+    conn = st.connection("supabase", type="sql").engine.connect()
+    with conn:
         # --- 0. PREPARAÇÃO DE DATAS ---
         semestres_existentes = pd.read_sql("SELECT DISTINCT semestre FROM turmas", conn)['semestre'].dropna().tolist()
         if "2026.1" not in semestres_existentes: semestres_existentes.append("2026.1")
