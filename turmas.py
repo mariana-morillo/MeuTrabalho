@@ -5,7 +5,7 @@ import plotly.express as plex
 import holidays
 import calendar
 from datetime import datetime, timedelta
-
+from sqlalchemy import text # ✅ Adicione esta linha no topo
 def renderizar_aba_turmas():
     conn = st.connection("supabase", type="sql").engine.connect()
     with conn:
@@ -53,7 +53,7 @@ def renderizar_aba_turmas():
             n_sem = col_c2.text_input("Semestre:", value=sem_recente, key="cad_s_t_vF")
             if st.button("🚀 Criar Turma", use_container_width=True):
                 if n_t:
-                    conn.execute('INSERT INTO turmas (nome, semestre) VALUES (?, ?)', (n_t, n_sem))
+                    conn.execute(text('INSERT INTO turmas (nome, semestre) VALUES (:n, :s)'), {"n": n_t, "s": n_sem})
                     conn.commit(); st.success("Turma criada!"); st.rerun()
 
         # --- ABA 3: IMPORTAR ALUNOS ---
@@ -74,7 +74,8 @@ def renderizar_aba_turmas():
                         id_up = t_db_todas[t_db_todas['nome'] == nome_turma_pura]['id'].values[0]
                         for _, row in df.dropna(subset=[c_n, c_r]).iterrows():
                             ra_limpo = str(row[c_r]).replace('.0', '').strip()
-                            conn.execute('INSERT OR IGNORE INTO alunos (turma_id, nome, ra) VALUES (?, ?, ?)', (int(id_up), str(row[c_n]).strip(), ra_limpo))
+                            conn.execute(text('INSERT INTO alunos (turma_id, nome, ra) VALUES (:tid, :nome, :ra) ON CONFLICT (ra) DO NOTHING'), 
+             {"tid": int(id_up), "nome": str(row[c_n]).strip(), "ra": ra_limpo})
                         conn.commit(); st.success("Importação concluída!"); st.rerun()
 
         # --- 2. ÁREA DE TRABALHO (Sub-Abas Pedagógicas) ---
@@ -98,9 +99,13 @@ def renderizar_aba_turmas():
                         selecionados = st.multiselect("Selecione os matriculados nesta disciplina:", options=alunos_turma_base['nome'].tolist(), default=nomes_pre_selecionados if matriculados else alunos_turma_base['nome'].tolist())
                         
                         if st.button("💾 Salvar Matrículas da Disciplina"):
-                            conn.execute("DELETE FROM matriculas_disciplina WHERE turma_id=? AND disciplina=?", (int(id_t_ativa), d_ativa))
+                            # Como deve ficar a limpeza e inserção de matrículas:
+                            conn.execute(text("DELETE FROM matriculas_disciplina WHERE turma_id=:tid AND disciplina=:d"), 
+                                         {"tid": int(id_t_ativa), "d": d_ativa})
+                            
                             for nome in selecionados:
-                                conn.execute("INSERT INTO matriculas_disciplina (turma_id, disciplina, aluno_id) VALUES (?,?,?)", (int(id_t_ativa), d_ativa, int(alunos_dict[nome])))
+                                conn.execute(text("INSERT INTO matriculas_disciplina (turma_id, disciplina, aluno_id) VALUES (:tid, :d, :aid)"), 
+                                             {"tid": int(id_t_ativa), "d": d_ativa, "aid": int(alunos_dict[nome])})
                             conn.commit()
                             st.success(f"Matrículas de {d_ativa} atualizadas!")
                             st.rerun()
@@ -110,10 +115,20 @@ def renderizar_aba_turmas():
                         df_edit_lista = pd.read_sql(f"SELECT a.id, a.ra as RA, a.nome as Nome, a.email as E_mail, a.observacoes as [Anotações Pedagógicas] FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_ativa} AND m.disciplina='{d_ativa}' ORDER BY a.nome", conn)
                         if not df_edit_lista.empty:
                             df_resultado_edicao = st.data_editor(df_edit_lista, column_config={"id": None, "RA": st.column_config.TextColumn("RA", disabled=True), "Nome": st.column_config.TextColumn("Nome do Aluno", width="medium"), "E_mail": st.column_config.TextColumn("E-mail"), "Anotações Pedagógicas": st.column_config.TextColumn("Notas (TDAH, Liderança, etc.)", width="large")}, hide_index=True, use_container_width=True, key=f"editor_alunos_{id_t_ativa}_{d_ativa}")
+                            # --- Dentro de with sub_mat: ---
                             if st.button("💾 Salvar Alterações na Lista", type="primary", use_container_width=True):
-                                with sqlite3.connect('banco_provas.db') as c:
-                                    for _, row in df_resultado_edicao.iterrows():
-                                        c.execute("UPDATE alunos SET nome=?, email=?, observacoes=? WHERE id=?", (row['Nome'], row['E_mail'], row['Anotações Pedagógicas'], int(row['id'])))
+                                for _, row in df_resultado_edicao.iterrows():
+                                    conn.execute(text("""
+                                        UPDATE alunos 
+                                        SET nome=:n, email=:e, observacoes=:o 
+                                        WHERE id=:id
+                                    """), {
+                                        "n": row['Nome'], 
+                                        "e": row['E_mail'], 
+                                        "o": row['Anotações Pedagógicas'], 
+                                        "id": int(row['id'])
+                                    })
+                                conn.commit()
                                 st.success("Informações atualizadas!"); st.rerun()
 
                 with sub_cron:
@@ -177,16 +192,32 @@ def renderizar_aba_turmas():
                                         cor = "red" if any(x in aula['tema_origem'] for x in ["Prova", "Exame", "AR"]) else "blue"
                                         c_d.markdown(f"<b style='color:{cor};'>Aula {aula['num_aula']} ({aula['data']})</b>", unsafe_allow_html=True)
                                         st.session_state[key_temp][idx]['tema_origem'] = c_s.selectbox(f"Conteúdo para {aula['data']}:", options=opcoes_fab, index=opcoes_fab.index(aula['tema_origem']) if aula['tema_origem'] in opcoes_fab else 0, key=f"mapeador_vFinal_{idx}")
+                                # --- Dentro de with aba_planejador: ---
                                 if st.button("💾 CONSOLIDAR E SALVAR CRONOGRAMA", type="primary", use_container_width=True):
-                                    conn.execute("DELETE FROM cronograma_detalhado WHERE turma_id=? AND disciplina=?", (int(id_t_ativa), d_ativa))
+                                    conn.execute(text("DELETE FROM cronograma_detalhado WHERE turma_id=:tid AND disciplina=:d"), 
+                                                 {"tid": int(id_t_ativa), "d": d_ativa})
+                                    
                                     for r in st.session_state[key_temp]:
                                         if r['tema_origem'] in dict_fab:
-                                            d_f = pd.read_sql(f"SELECT * FROM roteiro_mestre WHERE titulo_modelo='{d_ativa}' AND num_aula={dict_fab[r['tema_origem']]}", conn).iloc[0].to_dict()
+                                            d_f = pd.read_sql(text(f"SELECT * FROM roteiro_mestre WHERE titulo_modelo=:d AND num_aula=:n"), 
+                                                              conn, params={"d": d_ativa, "n": dict_fab[r['tema_origem']]}).iloc[0].to_dict()
                                             dfinal = {k: (v if v is not None else "") for k, v in d_f.items()}
                                         else:
                                             dfinal = {k: "" for k in ["tema", "tipo_aula", "objetivos_aula", "conteudo_detalhado", "metodologia", "aps_aula", "referencias_aula", "link_slides", "link_overleaf", "link_extras", "atividades", "atividades_link", "forum", "forum_link"]}
-                                            dfinal['tema'] = r['tema_origem']; dfinal['tipo_aula'] = "Avaliação" if "Prova" in r['tema_origem'] else "Teórica"
-                                        conn.execute("""INSERT INTO cronograma_detalhado (turma_id, disciplina, num_aula, data, tema, tipo_aula, objetivos_aula, conteudo_detalhado, metodologia, aps_aula, referencias_aula, link_slides, link_overleaf, link_extras, atividades, atividades_link, forum, forum_link) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (int(id_t_ativa), d_ativa, r['num_aula'], r['data'], dfinal['tema'], dfinal['tipo_aula'], dfinal['objetivos_aula'], dfinal['conteudo_detalhado'], dfinal['metodologia'], dfinal['aps_aula'], dfinal['referencias_aula'], dfinal['link_slides'], dfinal['link_overleaf'], dfinal['link_extras'], dfinal['atividades'], dfinal['atividades_link'], dfinal['forum'], dfinal['forum_link']))
+                                            dfinal['tema'] = r['tema_origem']
+                                            dfinal['tipo_aula'] = "Avaliação" if "Prova" in r['tema_origem'] else "Teórica"
+                                
+                                        conn.execute(text("""
+                                            INSERT INTO cronograma_detalhado (turma_id, disciplina, num_aula, data, tema, tipo_aula, objetivos_aula, conteudo_detalhado, metodologia, aps_aula, referencias_aula, link_slides, link_overleaf, link_extras, atividades, atividades_link, forum, forum_link) 
+                                            VALUES (:tid, :d, :na, :dt, :tm, :tp, :obj, :cont, :met, :aps, :ref, :ls, :lo, :le, :at, :atl, :fr, :frl)
+                                        """), {
+                                            "tid": int(id_t_ativa), "d": d_ativa, "na": r['num_aula'], "dt": r['data'], 
+                                            "tm": dfinal['tema'], "tp": dfinal['tipo_aula'], "obj": dfinal['objetivos_aula'], 
+                                            "cont": dfinal['conteudo_detalhado'], "met": dfinal['metodologia'], "aps": dfinal['aps_aula'], 
+                                            "ref": dfinal['referencias_aula'], "ls": dfinal['link_slides'], "lo": dfinal['link_overleaf'], 
+                                            "le": dfinal['link_extras'], "at": dfinal['atividades'], "atl": dfinal['atividades_link'], 
+                                            "fr": dfinal['forum'], "frl": dfinal['forum_link']
+                                        })
                                     conn.commit(); st.success("Cronograma salvo!"); del st.session_state[key_temp]; st.rerun()
 
                     with aba_plano_real:
@@ -225,11 +256,26 @@ def renderizar_aba_turmas():
                                     c_btn1, c_btn2, c_btn3 = st.columns([0.4, 0.4, 0.2])
                                     sync = c_btn1.checkbox("🔄 Sincronizar na FÁBRICA", key=f"sy_{idx}_vF")
                                     if c_btn2.button(f"💾 Salvar Aula {row['num_aula']}", key=f"bs_{idx}_vF", type="primary"):
-                                        conn.execute("UPDATE cronograma_detalhado SET tema=?, tipo_aula=?, objetivos_aula=?, conteudo_detalhado=?, metodologia=?, aps_aula=?, link_slides=?, link_overleaf=?, link_extras=?, atividades=?, atividades_link=?, forum=?, forum_link=?, referencias_aula=? WHERE id=?", (n_t, n_tp, n_obj, n_cont, n_m, n_a, n_ls, n_lo, n_le, n_at_t, n_at_l, n_ft_t, n_ft_l, n_ref, row['id']))
-                                        if sync: conn.execute("UPDATE roteiro_mestre SET tema=?, tipo_aula=?, objetivos_aula=?, conteudo_detalhado=?, metodologia=?, aps_aula=?, link_slides=?, link_overleaf=?, link_extras=?, atividades=?, atividades_link=?, forum=?, forum_link=?, referencias_aula=? WHERE titulo_modelo=? AND num_aula=?", (n_t, n_tp, n_obj, n_cont, n_m, n_a, n_ls, n_lo, n_le, n_at_t, n_at_l, n_ft_t, n_ft_l, n_ref, d_ativa, row['num_aula']))
+                                        conn.execute(text("""
+                                            UPDATE cronograma_detalhado 
+                                            SET tema=:t, tipo_aula=:tp, objetivos_aula=:obj, conteudo_detalhado=:cont, 
+                                                metodologia=:met, aps_aula=:aps, link_slides=:ls, link_overleaf=:lo, 
+                                                link_extras=:le, atividades=:at, atividades_link=:atl, forum=:f, 
+                                                forum_link=:fl, referencias_aula=:ref 
+                                            WHERE id=:id
+                                        """), {
+                                            "t": n_t, "tp": n_tp, "obj": n_obj, "cont": n_cont, "met": n_m, "aps": n_a,
+                                            "ls": n_ls, "lo": n_lo, "le": n_le, "at": n_at_t, "atl": n_at_l, "f": n_ft_t,
+                                            "fl": n_ft_l, "ref": n_ref, "id": int(row['id'])
+                                        })
+                                        if sync: 
+                                            conn.execute(text("UPDATE roteiro_mestre SET tema=:t, tipo_aula=:tp WHERE titulo_modelo=:tm AND num_aula=:na"),
+                                                         {"t": n_t, "tp": n_tp, "tm": d_ativa, "na": int(row['num_aula'])})
                                         conn.commit(); st.toast("Salvo!"); st.rerun()
+
                                     if c_btn3.button("🗑️ Deletar", key=f"bd_{idx}_vF"):
-                                        conn.execute("DELETE FROM cronograma_detalhado WHERE id=?", (row['id'],)); conn.commit(); st.rerun()
+                                        conn.execute(text("DELETE FROM cronograma_detalhado WHERE id=:id"), {"id": int(row['id'])})
+                                        conn.commit(); st.rerun()
                                 st.write("---")
 
                 with sub_pesos:
@@ -278,15 +324,30 @@ def renderizar_aba_turmas():
                         st.markdown(f"**Soma Total:** <span style='color:{cor_soma}; font-size:18px;'>{soma_total:.1f}%</span>", unsafe_allow_html=True)
                         if st.button("🔄 Aplicar e Recalcular Médias", type="primary", use_container_width=True):
                             if abs(soma_total - 100.0) < 0.1:
-                                conn.execute("DELETE FROM planejamento_notas WHERE turma_id=? AND disciplina=?", (int(id_t_ativa), d_ativa))
-                                cp = [f"{n_p} {i+1}" for i in range(int(q_p))]; cl = [f"{n_l} {i+1}" for i in range(int(q_l))]; clb = [f"{n_lb} {i+1}" for i in range(int(q_lb))]
-                                for nome in cp: conn.execute("INSERT INTO planejamento_notas (turma_id, disciplina, nome_avaliacao, peso) VALUES (?,?,?,?)", (int(id_t_ativa), d_ativa, nome, float(w_p) / max(1, int(q_p))))
-                                for nome in cl: conn.execute("INSERT INTO planejamento_notas (turma_id, disciplina, nome_avaliacao, peso) VALUES (?,?,?,?)", (int(id_t_ativa), d_ativa, nome, float(w_l) / max(1, int(q_l))))
-                                for nome in clb: conn.execute("INSERT INTO planejamento_notas (turma_id, disciplina, nome_avaliacao, peso) VALUES (?,?,?,?)", (int(id_t_ativa), d_ativa, nome, float(w_lb) / max(1, int(q_lb))))
-                                if w_a > 0: conn.execute("INSERT INTO planejamento_notas (turma_id, disciplina, nome_avaliacao, peso) VALUES (?,?,?,?)", (int(id_t_ativa), d_ativa, f"{n_a} (Dojo)", float(w_a)))
+                                conn.execute(text("DELETE FROM planejamento_notas WHERE turma_id=:tid AND disciplina=:d"), {"tid": int(id_t_ativa), "d": d_ativa})
+                                
+                                # Listas de nomes das avaliações
+                                cats = [
+                                    ([f"{n_p} {i+1}" for i in range(int(q_p))], float(w_p) / max(1, int(q_p))),
+                                    ([f"{n_l} {i+1}" for i in range(int(q_l))], float(w_l) / max(1, int(q_l))),
+                                    ([f"{n_lb} {i+1}" for i in range(int(q_lb))], float(w_lb) / max(1, int(q_lb)))
+                                ]
+                                
+                                for nomes, peso in cats:
+                                    for nome in nomes:
+                                        conn.execute(text("INSERT INTO planejamento_notas (turma_id, disciplina, nome_avaliacao, peso) VALUES (:tid, :d, :n, :p)"), 
+                                                     {"tid": int(id_t_ativa), "d": d_ativa, "n": nome, "p": peso})
+                                
+                                if w_a > 0:
+                                    conn.execute(text("INSERT INTO planejamento_notas (turma_id, disciplina, nome_avaliacao, peso) VALUES (:tid, :d, :n, :p)"), 
+                                                 {"tid": int(id_t_ativa), "d": d_ativa, "n": f"{n_a} (Dojo)", "p": float(w_a)})
+                                
                                 for ex_n, ex_q, ex_w, ex_c in extras_list:
-                                    ctx = [f"{ex_n} {j+1}" for j in range(int(ex_q))]
-                                    for nome in ctx: conn.execute("INSERT INTO planejamento_notas (turma_id, disciplina, nome_avaliacao, peso) VALUES (?,?,?,?)", (int(id_t_ativa), d_ativa, nome, float(ex_w) / max(1, int(ex_q))))
+                                    peso_ex = float(ex_w) / max(1, int(ex_q))
+                                    for j in range(int(ex_q)):
+                                        conn.execute(text("INSERT INTO planejamento_notas (turma_id, disciplina, nome_avaliacao, peso) VALUES (:tid, :d, :n, :p)"), 
+                                                     {"tid": int(id_t_ativa), "d": d_ativa, "n": f"{ex_n} {j+1}", "p": peso_ex})
+                                
                                 conn.commit(); st.success("Planejamento salvo!"); st.rerun()
 
                     # --- LÓGICA DE DEFINIÇÃO DE COLUNAS ---
@@ -327,11 +388,18 @@ def renderizar_aba_turmas():
                             for col in cativs: ccfg[col] = st.column_config.NumberColumn(disabled=True)
                             df_ed = st.data_editor(df_calc[cdisp], use_container_width=True, hide_index=True, column_config=ccfg, key="ed_notas_vFinal")
                             if st.button("💾 Salvar Planilha Inteira", type="primary", use_container_width=True):
-                                conn.execute("DELETE FROM notas_flexiveis WHERE turma_id=? AND disciplina=?", (int(id_t_ativa), d_ativa))
+                                
+                                conn.execute(text("DELETE FROM notas_flexiveis WHERE turma_id=:tid AND disciplina=:d"), 
+                                             {"tid": int(id_t_ativa), "d": d_ativa})
                                 for _, row in df_ed.iterrows():
                                     for col in tent:
                                         if col in cativs: continue
-                                        conn.execute("INSERT INTO notas_flexiveis (turma_id, disciplina, matricula, avaliacao, nota) VALUES (?,?,?,?,?)", (int(id_t_ativa), d_ativa, row['Matrícula'], col, float(row[col])))
+                                        conn.execute(text("""
+                                            INSERT INTO notas_flexiveis (turma_id, disciplina, matricula, avaliacao, nota) 
+                                            VALUES (:tid, :d, :m, :av, :n)
+                                        """), {
+                                            "tid": int(id_t_ativa), "d": d_ativa, "m": row['Matrícula'], "av": col, "n": float(row[col])
+                                        })
                                 conn.commit(); st.success("Notas salvas!"); st.rerun()
 
                         with t_excel:
