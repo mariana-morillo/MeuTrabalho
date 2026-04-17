@@ -589,9 +589,7 @@ with aba_avaliacoes:
 
     # --- SUB-ABA 1.2: EDITAR BANCO ---
     with sub_edit:
-        conn = sqlite3.connect(get_db_name())
-        df_todas = pd.read_sql('SELECT id, disciplina, assunto, dificuldade, tipo, enunciado FROM questoes ORDER BY id DESC', conn)
-        conn.close()
+        df_todas = pd.read_sql(text('SELECT id, disciplina, assunto, dificuldade, tipo, enunciado FROM questoes ORDER BY id DESC'), conn_central)
         st.markdown("**🔍 Filtro**")
         if not df_todas.empty:
             col_f1, col_f2 = st.columns(2)
