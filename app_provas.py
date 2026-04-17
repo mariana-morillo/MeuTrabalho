@@ -678,8 +678,8 @@ with aba_avaliacoes:
                                 ci1.warning("🖼️ Imagem original não encontrada.")
                         if n_img_up: ci2.image(n_img_up, caption="🆕 Nova", width=150)
                     # --- 3. LÓGICA DE RESPOSTAS E GABARITOS PADRONIZADA ---
-                    c.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ? ORDER BY id', (id_editar,))
-                    alts_q = c.fetchall(); alts_modificadas, alts_imagens_novas = [], {}
+                    # Busca alternativas direto no Supabase
+                    alts_q = conn_central.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": id_editar}).fetchall()
                     st.write("---")
                     
                     if n_tipo == "Múltipla Escolha":
@@ -921,7 +921,7 @@ with aba_avaliacoes:
                         st.warning("Excluída!"); 
                         st.rerun()
                         
-                conn.close()
+                
         else: st.info("O seu banco de questões ainda está vazio.")
 
     
