@@ -1173,11 +1173,8 @@ with aba_avaliacoes:
                         st.markdown("**💡 Resposta (Alternativas)**")
                         st.caption("⚠️ Atenção: Edições nas alternativas SÓ vão para o PDF se você clicar em 'Atualizar no Banco' abaixo.")
                         
-                        import sqlite3
-                        with sqlite3.connect(get_db_name()) as c_temp:
-                            cursor_t = c_temp.cursor()
-                            cursor_t.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ? ORDER BY id', (q['id'],))
-                            alts_q_adj = cursor_t.fetchall()
+                        # Busca alternativas direto no Supabase
+                        alts_q_adj = conn_central.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": id_editar}).fetchall()
                             
                         n_opt_key_adj = f"adj_n_opt_{q['id']}"
                         if n_opt_key_adj not in st.session_state: st.session_state[n_opt_key_adj] = max(len(alts_q_adj), 4)
@@ -1344,22 +1341,21 @@ with aba_avaliacoes:
                     # ⚠️ Lógica de proteção contra clones + Sincronização na Nuvem
                     is_clone = "_copy_" in str(q['id'])
                     
-                    if c_e2.button("🆙 Atualizar", key=f"sv_banco_{q['id']}", use_container_width=True, disabled=is_clone):
-                        sql_upd_prova = """UPDATE questoes SET enunciado=:en, pontos=:pt, imagem=:img, gabarito_imagem=:gimg, gabarito_discursivo=:gd WHERE id=:id"""
-                        conn_central.execute(text(sql_upd_prova), {"en": novo_enun, "pt": novo_pt, "img": img_temp, "gimg": img_gab_temp, "gd": novo_gab, "id": q['id']})
-                        
-                        if q['tipo'] in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
-                            conn_central.execute(text('DELETE FROM alternativas WHERE questao_id = :id'), {"id": q['id']})
-                            for j, (t, co) in enumerate(alts_modificadas_adj):
-                                img_obj = alts_imagens_novas_adj.get(j); img_bd = None
-                                if hasattr(img_obj, 'getbuffer'):
-                                    img_bd = subir_imagem_nuvem(img_obj, f"upd_alt_{q['id']}_{j}_{sanitizar_nome(img_obj.name)}")
-                                else: img_bd = img_obj
-                                conn_central.execute(text('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (:qid, :t, :c, :img)'), {"qid": q['id'], "t": t, "c": co, "img": img_bd})
-                        
-                        conn_central.commit()
-                        salvar_banco_no_cofre()
-                        st.success(f"Questão {q['id']} atualizada na nuvem!")
+                    sql_upd_prova = """UPDATE questoes SET enunciado=:en, pontos=:pt, imagem=:img, gabarito_imagem=:gimg, gabarito_discursivo=:gd WHERE id=:id"""
+                    conn_central.execute(text(sql_upd_prova), {"en": novo_enun, "pt": novo_pt, "img": img_temp, "gimg": img_gab_temp, "gd": novo_gab, "id": q['id']})
+                    
+                    if q['tipo'] in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
+                        conn_central.execute(text('DELETE FROM alternativas WHERE questao_id = :id'), {"id": q['id']})
+                        for j, (t, co) in enumerate(alts_modificadas_adj):
+                            img_obj = alts_imagens_novas_adj.get(j); img_bd = None
+                            if hasattr(img_obj, 'getbuffer'):
+                                img_bd = subir_imagem_nuvem(img_obj, f"upd_alt_{q['id']}_{j}_{sanitizar_nome(img_obj.name)}")
+                            else: img_bd = img_obj
+                            conn_central.execute(text('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (:qid, :t, :c, :img)'), {"qid": q['id'], "t": t, "c": co, "img": img_bd})
+                    
+                    conn_central.commit()
+                    salvar_banco_no_cofre()
+                    st.success(f"Questão {q['id']} atualizada na nuvem!")
 
                     if c_e_dup.button("🧬 Clonar", key=f"dup_p_gen_{q['id']}", use_container_width=True, help="Duplica a questão aqui mesmo"):
                         import random
