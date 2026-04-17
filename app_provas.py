@@ -243,10 +243,11 @@ with st.sidebar:
     with st.popover("🐞 Reportar Erro aos Desenvolvedores"):
         msg_erro = st.text_area("O que aconteceu?")
         if st.button("Enviar Relato"):
-            with sqlite3.connect(get_db_name()) as conn:
-                conn.execute("CREATE TABLE IF NOT EXISTS bugs (id INTEGER PRIMARY KEY, msg TEXT, data TEXT)")
-                conn.execute("INSERT INTO bugs (msg, data) VALUES (?,?)", (msg_erro, datetime.now().strftime("%d/%m %H:%M")))
-            st.success("Relato salvo! Vou analisar em breve.")
+            with conn_central:
+                conn_central.execute(text("CREATE TABLE IF NOT EXISTS bugs (id SERIAL PRIMARY KEY, msg TEXT, data TEXT)"))
+                conn_central.execute(text("INSERT INTO bugs (msg, data) VALUES (:m, :d)"), {"m": msg_erro, "d": datetime.now().strftime("%d/%m %H:%M")})
+                conn_central.commit()
+            st.success("Relato salvo no Supabase! Vou analisar em breve.")
     # 3. O NOVO DEPURADOR (Sua "Caixa-Preta")
     st.write("---")
     st.subheader("🕵️ Depurador LaTeX")
