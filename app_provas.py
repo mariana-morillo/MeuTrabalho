@@ -888,7 +888,7 @@ with aba_avaliacoes:
 
                     # O NOVO BOTÃO DE DUPLICAR AQUI:
                     if cb_d.button("💾 Salvar como Nova", use_container_width=True, help="Cria uma CÓPIA exata no banco (ideal para mudar valores)"):
-                        conn.close() # 🔴 ADICIONE ESTA LINHA AQUI! Libera o banco para o db.py
+                        
                         i_f = q_img
                         if n_img_up: 
                             i_f = subir_imagem_nuvem(n_img_up, f"nova_enun_{sanitizar_nome(n_img_up.name)}")
@@ -915,7 +915,7 @@ with aba_avaliacoes:
                         st.rerun()
 
                     if cb_e.button("🗑️ Excluir Permanente", use_container_width=True):
-                        conn.close() # 🔴 ADICIONE ESTA LINHA AQUI TAMBÉM! Libera o banco para o db.py
+                        
                         excluir_questao(id_editar); 
                         salvar_banco_no_cofre()
                         st.warning("Excluída!"); 
@@ -1026,7 +1026,7 @@ with aba_avaliacoes:
                     st.success(f"{len(alunos_selecionados_df)} aluno(s) selecionado(s).")
                 else: st.warning("Esta turma ainda não tem alunos cadastrados.")
             else: st.warning("Nenhuma turma cadastrada.")
-            conn.close()
+            
         st.write("---")
         st.markdown("**☑️ 3. Seleção de Questões**")
         col_p1, col_p2, col_p3 = st.columns(3) 
