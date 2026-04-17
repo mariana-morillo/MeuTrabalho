@@ -608,15 +608,7 @@ with aba_avaliacoes:
                 st.write("---")
                 st.markdown("**⚙️ Configuração**")
                 id_editar = int(q_sel.split(" | ")[0].replace("ID ", ""))
-                conn = sqlite3.connect(get_db_name())
-                c = conn.cursor()
-                
-                # --- MIGRATION DE SEGURANÇA: Cria a coluna nas questões antigas se ela não existir ---
-                try: c.execute("ALTER TABLE questoes ADD COLUMN uso_quest TEXT DEFAULT 'Prova Oficial'")
-                except: pass
-                
-                c.execute('SELECT disciplina, assunto, dificuldade, enunciado, imagem, pontos, tipo, gabarito_discursivo, espaco_resposta, espaco_linhas, gabarito_imagem, uso_quest FROM questoes WHERE id=?', (id_editar,))
-                q_data = c.fetchone()
+                q_data = conn_central.execute(text('SELECT disciplina, assunto, dificuldade, enunciado, imagem, pontos, tipo, gabarito_discursivo, espaco_resposta, espaco_linhas, gabarito_imagem, uso_quest FROM questoes WHERE id=:id'), {"id": id_editar}).fetchone()
                 
                 if q_data:
                     q_disc, q_ass, q_dif, q_enun, q_img, q_pts, q_tipo, q_gab_disc, q_esp, q_esp_l, q_gab_img, q_uso = q_data
@@ -876,19 +868,22 @@ with aba_avaliacoes:
                             i_g_f = subir_imagem_nuvem(n_img_g_up, f"edit_gab_{sanitizar_nome(n_img_g_up.name)}")
 
                         val_gab = gab_d_final if 'gab_d_final' in locals() else q_gab_disc
-                        c.execute('''UPDATE questoes SET disciplina=?, assunto=?, dificuldade=?, enunciado=?, pontos=?, espaco_resposta=?, espaco_linhas=?, tipo=?, imagem=?, gabarito_imagem=?, gabarito_discursivo=?, uso_quest=? WHERE id=?''', (n_disc, n_ass, n_dif, n_enun_final, n_pts, n_esp, n_tam, n_tipo, i_f, i_g_f, val_gab, n_uso, id_editar))
+                        
+                        sql_upd = """UPDATE questoes SET disciplina=:d, assunto=:as, dificuldade=:dif, enunciado=:en, pontos=:pt, espaco_resposta=:er, espaco_linhas=:el, tipo=:t, imagem=:img, gabarito_imagem=:gimg, gabarito_discursivo=:gd, uso_quest=:u WHERE id=:id"""
+                        conn_central.execute(text(sql_upd), {"d": n_disc, "as": n_ass, "dif": n_dif, "en": n_enun_final, "pt": n_pts, "er": n_esp, "el": n_tam, "t": n_tipo, "img": i_f, "gimg": i_g_f, "gd": val_gab, "u": n_uso, "id": id_editar})
                         
                         if n_tipo in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
-                            c.execute('DELETE FROM alternativas WHERE questao_id = ?', (id_editar,))
+                            conn_central.execute(text('DELETE FROM alternativas WHERE questao_id = :id'), {"id": id_editar})
                             for j, (t, co) in enumerate(alts_modificadas):
                                 img_obj = alts_imagens_novas.get(j); img_bd = None
                                 if hasattr(img_obj, 'getbuffer'):
                                     img_bd = subir_imagem_nuvem(img_obj, f"edit_alt_{id_editar}_{j}_{sanitizar_nome(img_obj.name)}")
                                 else: img_bd = img_obj
-                                c.execute('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (?, ?, ?, ?)', (id_editar, t, co, img_bd))
-                        conn.commit(); 
+                                conn_central.execute(text('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (:qid, :t, :c, :img)'), {"qid": id_editar, "t": t, "c": co, "img": img_bd})
+                        
+                        conn_central.commit()
                         salvar_banco_no_cofre()
-                        st.success("✅ Tudo atualizado!"); 
+                        st.success("✅ Tudo atualizado no Supabase!") 
                         st.rerun()
 
                     # O NOVO BOTÃO DE DUPLICAR AQUI:
@@ -1018,12 +1013,11 @@ with aba_avaliacoes:
         elif modo_id == "Upload Temporário de Lista":
             arquivo_lista = st.file_uploader("Upload da Lista", type=['xlsx', 'csv'], key="up_lista_alunos")
         elif modo_id == "Usar Turma Cadastrada":
-            conn = sqlite3.connect(get_db_name())
-            turmas_db = pd.read_sql('SELECT * FROM turmas', conn)
+            turmas_db = pd.read_sql(text('SELECT * FROM turmas'), conn_central)
             if not turmas_db.empty:
                 t_escolhida = st.selectbox("Escolha a Turma:", turmas_db['nome'].tolist())
                 id_t_escolhida = turmas_db[turmas_db['nome'] == t_escolhida]['id'].values[0]
-                alunos_da_turma = pd.read_sql(f'SELECT nome as NOME, ra as RA FROM alunos WHERE turma_id = {id_t_escolhida}', conn)
+                alunos_da_turma = pd.read_sql(text('SELECT nome as "NOME", ra as "RA" FROM alunos WHERE turma_id = :id'), conn_central, params={"id": int(id_t_escolhida)})
                 if not alunos_da_turma.empty:
                     opcoes_alunos = alunos_da_turma['NOME'].tolist()
                     selecao = st.multiselect("Selecione os alunos (vazio = turma toda):", opcoes_alunos)
