@@ -1345,26 +1345,21 @@ with aba_avaliacoes:
                     is_clone = "_copy_" in str(q['id'])
                     
                     if c_e2.button("🆙 Atualizar", key=f"sv_banco_{q['id']}", use_container_width=True, disabled=is_clone):
-                        with sqlite3.connect(get_db_name()) as conn_upd:
-                            conn_upd.execute("UPDATE questoes SET enunciado=?, pontos=?, imagem=?, gabarito_imagem=?, gabarito_discursivo=? WHERE id=?", 
-                                             (novo_enun, novo_pt, img_temp, img_gab_temp, novo_gab, q['id']))
-                            
-                            if q['tipo'] in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
-                                conn_upd.execute('DELETE FROM alternativas WHERE questao_id = ?', (q['id'],))
-                                for j, (t, co) in enumerate(alts_modificadas_adj):
-                                    img_obj = alts_imagens_novas_adj.get(j)
-                                    img_bd = None
-                                    if hasattr(img_obj, 'getbuffer'):
-                                        nome_f = sanitizar_nome(img_obj.name)
-                                        with open(nome_f, "wb") as f:
-                                            f.write(img_obj.getbuffer())
-                                        img_bd = nome_f
-                                    else: img_bd = img_obj
-                                    conn_upd.execute('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (?, ?, ?, ?)', (q['id'], t, co, img_bd))
-                            
-                            conn_upd.commit()
-                            salvar_banco_no_cofre() # <--- Sincroniza a atualização da prova com a nuvem
-                        st.success(f"Questão atualizada no banco de dados!")
+                        sql_upd_prova = """UPDATE questoes SET enunciado=:en, pontos=:pt, imagem=:img, gabarito_imagem=:gimg, gabarito_discursivo=:gd WHERE id=:id"""
+                        conn_central.execute(text(sql_upd_prova), {"en": novo_enun, "pt": novo_pt, "img": img_temp, "gimg": img_gab_temp, "gd": novo_gab, "id": q['id']})
+                        
+                        if q['tipo'] in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
+                            conn_central.execute(text('DELETE FROM alternativas WHERE questao_id = :id'), {"id": q['id']})
+                            for j, (t, co) in enumerate(alts_modificadas_adj):
+                                img_obj = alts_imagens_novas_adj.get(j); img_bd = None
+                                if hasattr(img_obj, 'getbuffer'):
+                                    img_bd = subir_imagem_nuvem(img_obj, f"upd_alt_{q['id']}_{j}_{sanitizar_nome(img_obj.name)}")
+                                else: img_bd = img_obj
+                                conn_central.execute(text('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (:qid, :t, :c, :img)'), {"qid": q['id'], "t": t, "c": co, "img": img_bd})
+                        
+                        conn_central.commit()
+                        salvar_banco_no_cofre()
+                        st.success(f"Questão {q['id']} atualizada na nuvem!")
 
                     if c_e_dup.button("🧬 Clonar", key=f"dup_p_gen_{q['id']}", use_container_width=True, help="Duplica a questão aqui mesmo"):
                         import random
