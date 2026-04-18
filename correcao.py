@@ -1,11 +1,11 @@
 # correcao.py
 import streamlit as st
-import sqlite3
 import pandas as pd
 import json
 import cv2
 import numpy as np
 import os
+from sqlalchemy import text
 # Força o Python do Mac a enxergar a pasta secreta do Homebrew (Zbar)
 os.environ["DYLD_LIBRARY_PATH"] = "/opt/homebrew/lib:/usr/local/lib"
 
@@ -55,9 +55,12 @@ def recortar_e_alinhar_folha(img_orig):
     return img_redim
 
 def renderizar_aba_correcao():
-    with sqlite3.connect(get_db_name()) as conn:
+    # Cria a conexão com o Supabase
+    conn_central = st.connection("supabase", type="sql").engine.connect()
+    
+    with conn_central:
         st.markdown("**🔍 Filtro**")
-        turmas_df = pd.read_sql("SELECT id, nome FROM turmas", conn)
+        turmas_df = pd.read_sql(text("SELECT id, nome FROM turmas"), conn_central)
         if turmas_df.empty:
             st.warning("⚠️ Cadastre uma turma na aba 'Semestres e Turmas' antes de começar.")
         else:
@@ -65,11 +68,11 @@ def renderizar_aba_correcao():
             t_corr_nome = c_sel1.selectbox("👥 Turma:", turmas_df['nome'].tolist(), key="t_corr_final")
             id_t_corr = turmas_df[turmas_df['nome'] == t_corr_nome]['id'].values[0]
             
-            discs_plan = pd.read_sql(f"SELECT DISTINCT disciplina FROM planejamento_notas WHERE turma_id = {id_t_corr}", conn)
+            discs_plan = pd.read_sql(text("SELECT DISTINCT disciplina FROM planejamento_notas WHERE turma_id = :id_t"), conn_central, params={"id_t": int(id_t_corr)})
             lista_disc_corr = discs_plan['disciplina'].tolist() if not discs_plan.empty else ["Termodinâmica", "Mecânica dos Fluidos", "TCC 1"]
             d_corr_sel = c_sel2.selectbox("🏷️ Disciplina:", lista_disc_corr, key="d_corr_final")
             
-            df_plan = pd.read_sql(f"SELECT nome_avaliacao FROM planejamento_notas WHERE turma_id = {int(id_t_corr)} AND disciplina = '{d_corr_sel}'", conn)
+            df_plan = pd.read_sql(text("SELECT nome_avaliacao FROM planejamento_notas WHERE turma_id = :id_t AND disciplina = :d"), conn_central, params={"id_t": int(id_t_corr), "d": d_corr_sel})
             lista_ativ_plan = df_plan['nome_avaliacao'].tolist() if not df_plan.empty else []
             if lista_ativ_plan: prova_final_nome = c_sel3.selectbox("📑 Selecione a Prova (Se for Oficial):", lista_ativ_plan, key="p_corr_plan")
             else:
@@ -119,7 +122,7 @@ def renderizar_aba_correcao():
 
                         if not dados_qr:
                             st.warning(f"⚠️ Pág {idx_img+1}: QR Code ilegível.")
-                            alunos_db = pd.read_sql(f'SELECT nome, ra FROM alunos WHERE turma_id={id_t_corr}', conn)
+                            alunos_db = pd.read_sql(text('SELECT nome, ra FROM alunos WHERE turma_id=:id_t'), conn_central, params={"id_t": int(id_t_corr)})
                             lista_alunos = ["Escolha o aluno..."] + [f"{r['ra']} - {r['nome']}" for _, r in alunos_db.iterrows()]
                             aluno_sel = st.selectbox(f"Quem é o aluno da pág {idx_img+1}?", lista_alunos, key=f"sel_m_{idx_img}")
                             if aluno_sel != "Escolha o aluno...":
@@ -230,15 +233,17 @@ def renderizar_aba_correcao():
                         if st.button(f"💾 Confirmar e Salvar: {dados_qr['nome']}", key=f"sv_{idx_img}", type="primary"):
                             
                             # 1. SALVA A NOTA NA PLANILHA OFICIAL (Apenas se não for Treino)
-                            # 1. SALVA A NOTA NA PLANILHA OFICIAL (Apenas se não for Treino)
                             if "Treino" not in tipo_lido:
-                                conn.execute("DELETE FROM notas_flexiveis WHERE turma_id=? AND disciplina=? AND matricula=? AND avaliacao=?", (int(id_t_corr), d_corr_sel, dados_qr['ra'], prova_final_nome))
-                                conn.execute("INSERT INTO notas_flexiveis (turma_id, disciplina, matricula, avaliacao, nota) VALUES (?,?,?,?,?)", (int(id_t_corr), d_corr_sel, dados_qr['ra'], prova_final_nome, float(nota_final_lote)))
-                                conn.commit()
+                                p_notas = {
+                                    "t_id": int(id_t_corr), "disc": d_corr_sel, 
+                                    "mat": dados_qr['ra'], "aval": prova_final_nome, 
+                                    "nota": float(nota_final_lote)
+                                }
+                                conn_central.execute(text("DELETE FROM notas_flexiveis WHERE turma_id=:t_id AND disciplina=:disc AND matricula=:mat AND avaliacao=:aval"), p_notas)
+                                conn_central.execute(text("INSERT INTO notas_flexiveis (turma_id, disciplina, matricula, avaliacao, nota) VALUES (:t_id, :disc, :mat, :aval, :nota)"), p_notas)
+                                conn_central.commit()
                                 salvar_banco_no_cofre()
-                                st.toast("✅ Nota Oficial enviada para a Planilha/Boletim!")
-                            else:
-                                st.toast("🏋️ Atividade de Treino: Apenas o feedback foi gravado.")
+                                st.toast("✅ Nota Oficial salva no Supabase!")
                             
                             # 2. SALVA O FEEDBACK NO PORTAL DO ALUNO
                             for r in resumos:
