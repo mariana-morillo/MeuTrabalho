@@ -1174,7 +1174,7 @@ with aba_avaliacoes:
                         st.caption("⚠️ Atenção: Edições nas alternativas SÓ vão para o PDF se você clicar em 'Atualizar no Banco' abaixo.")
                         
                         # Busca alternativas direto no Supabase
-                        alts_q_adj = conn_central.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": id_editar}).fetchall()
+                        alts_q_adj = conn_central.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": q['id']}).fetchall()
                             
                         n_opt_key_adj = f"adj_n_opt_{q['id']}"
                         if n_opt_key_adj not in st.session_state: st.session_state[n_opt_key_adj] = max(len(alts_q_adj), 4)
@@ -1255,12 +1255,8 @@ with aba_avaliacoes:
                                 alts_modificadas_adj.append((txt_a, corr))
 
                     elif q['tipo'] == "Verdadeiro ou Falso":
-                        import sqlite3
-                        with sqlite3.connect(get_db_name()) as c_temp:
-                            cursor_t = c_temp.cursor()
-                            cursor_t.execute('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = ? ORDER BY id', (q['id'],))
-                            alts_q_adj = cursor_t.fetchall()
-                            
+                        alts_q_adj = conn_central.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": q['id']}).fetchall()
+                        
                         idx_banco = 0 if any(a[0] == "Verdadeiro" and a[1] for a in alts_q_adj) else 1
                         st.write("---")
                         st.markdown("**💡 Resposta (V/F)**")
