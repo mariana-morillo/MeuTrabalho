@@ -1,15 +1,14 @@
-import sqlite3
+import streamlit as st
+from sqlalchemy import text
 
-# Conecta ao seu banco de dados
-conn = sqlite3.connect('banco_provas.db')
-cursor = conn.cursor()
+# Conecta no seu Supabase
+conn_central = st.connection("supabase", type="sql").engine.connect()
 
 try:
-    # Executa o comando para adicionar a nova coluna
-    cursor.execute("ALTER TABLE questoes ADD COLUMN uso TEXT DEFAULT 'PROVA';")
-    conn.commit()
-    print("✅ Coluna 'uso' adicionada com sucesso!")
-except sqlite3.OperationalError:
-    print("⚠️ A coluna 'uso' já existe ou houve um erro de digitação.")
-finally:
-    conn.close()
+    # Executa o comando de alteração no Postgres
+    with conn_central:
+        conn_central.execute(text("ALTER TABLE questoes ADD COLUMN uso_quest TEXT DEFAULT 'Prova Oficial';"))
+        conn_central.commit()
+    print("✅ Coluna 'uso_quest' adicionada com sucesso no Supabase!")
+except Exception as e:
+    print(f"⚠️ A coluna já existe ou houve um erro: {e}")
