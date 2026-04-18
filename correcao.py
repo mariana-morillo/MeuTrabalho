@@ -244,6 +244,8 @@ def renderizar_aba_correcao():
                                 conn_central.commit()
                                 salvar_banco_no_cofre()
                                 st.toast("✅ Nota Oficial salva no Supabase!")
+                            else:
+                                st.toast("🏋️ Atividade de Treino: Apenas o feedback foi gravado.")
                             
                             # 2. SALVA O FEEDBACK NO PORTAL DO ALUNO
                             for r in resumos:
