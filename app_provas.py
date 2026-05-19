@@ -104,7 +104,35 @@ with st.sidebar:
         st.rerun()
     
     st.divider() # Uma linha para separar do seu menu original
-
+    # --- BOTÃO TEMPORÁRIO DE TRANSPLANTE ---
+    st.write("---")
+    if st.button("💉 INICIAR TRANSPLANTE (MIGRAÇÃO)", type="primary"):
+        import sqlite3
+        import pandas as pd
+        from sqlalchemy import text
+        try:
+            conn_nuvem = st.connection("supabase", type="sql").engine.connect()
+            conn_local = sqlite3.connect("banco_provas.db") # O ficheiro velho que está no GitHub
+            with st.spinner("Sugando dados antigos e injetando no Supabase..."):
+                tabelas = ["configuracoes", "turmas", "alunos", "questoes", "alternativas"]
+                with conn_nuvem:
+                    for tabela in tabelas:
+                        try:
+                            df = pd.read_sql(f"SELECT * FROM {tabela}", conn_local)
+                            if not df.empty:
+                                # Copia para o Supabase
+                                df.to_sql(tabela, con=conn_nuvem, if_exists='append', index=False)
+                                # Arruma o contador de IDs para não dar conflito nas próximas questões
+                                conn_nuvem.execute(text(f"SELECT setval(pg_get_serial_sequence('{tabela}', 'id'), coalesce(max(id),0) + 1, false) FROM {tabela};"))
+                        except:
+                            pass
+                    conn_nuvem.commit()
+            conn_local.close()
+            st.balloons()
+            st.success("✅ TRANSPLANTE CONCLUÍDO! O Supabase agora tem todos os seus dados.")
+        except Exception as e:
+            st.error(f"❌ Erro: {e}")
+    # ---------------------------------------
 # ... (continua com as suas abas: aba_correcao, aba_turmas, etc.) ...
 # =========================================================================
 # --- 1. MANUTENÇÃO E BACKUP ---
