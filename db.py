@@ -95,7 +95,7 @@ def excluir_questao(q_id):
 
 def obter_assuntos_da_disciplina(disciplina):
     # Adicionamos .session antes do .execute
-    res = conn_central.session.execute(text("SELECT DISTINCT assunto FROM questoes WHERE disciplina = :d AND assunto IS NOT NULL AND assunto != '' ORDER BY assunto"), {"d": disciplina}).fetchall()
+    res = conn_central.execute(text("SELECT DISTINCT assunto FROM questoes WHERE disciplina = :d AND assunto IS NOT NULL AND assunto != '' ORDER BY assunto"), {"d": disciplina}).fetchall()
     return ["Todos"] + [r[0] for r in res]
 
 def buscar_questoes_filtradas(disciplina, limite=None, assunto="Todos", dificuldade="Todos", tipo="Todos", sortear=False, excluir_ids=None, uso="Todos"):
