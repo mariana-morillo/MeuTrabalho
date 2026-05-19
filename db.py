@@ -169,3 +169,7 @@ def buscar_questoes_proximas(enunciado_novo, disciplina, limite=0.8):
             encontradas.append({"id": q_id, "texto": q_texto, "percentual": similaridade * 100})
             
     return sorted(encontradas, key=lambda x: x['percentual'], reverse=True)
+    
+def obter_estatisticas_questoes(disciplina):
+    res = conn_central.execute(text('SELECT tipo, COUNT(*) FROM questoes WHERE disciplina = :d GROUP BY tipo'), {"d": disciplina}).fetchall()
+    return {tipo: qtd for tipo, qtd in res}
