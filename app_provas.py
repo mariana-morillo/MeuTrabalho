@@ -1,6 +1,10 @@
 import streamlit as st
+
+# 1. A PRIMEIRA linha de comando Streamlit (OBRIGATÓRIO SER AQUI NO TOPO!)
+st.set_page_config(page_title="Professorei", page_icon="🎓", layout="wide", initial_sidebar_state="collapsed")
+
 import sqlite3
-import pandas as pd  # Resolvendo o erro do 'pd'
+import pandas as pd  
 import os
 import cv2
 import numpy as np
@@ -9,10 +13,13 @@ import random
 import json
 import qrcode
 from sqlalchemy import text
-conn_central = st.connection("supabase", type="sql").engine.connect()
 from datetime import datetime, timedelta
 
-# 1. Seus módulos personalizados
+# Conexão central após o set_page_config
+# Mude a linha 23 para isto:
+conn_central = st.connection("supabase", type="sql")
+
+# 2. Seus módulos personalizados
 from latex_utils import sanitizar_nome, escapar_latex, gerar_preview_web, configurar_jinja, compilar_latex_mac
 from correcao import renderizar_aba_correcao
 from sala import renderizar_aba_sala
@@ -20,9 +27,8 @@ from planejamento import renderizar_aba_fabrica
 from turmas import renderizar_aba_turmas
 from nuvem import subir_imagem_nuvem, baixar_imagem_para_latex
 
-# 2. O COMBO COMPLETO E REVISADO DO DB.PY (Agora com excluir_questao!)
+# 3. O COMBO COMPLETO E REVISADO DO DB.PY
 from db import (
-    
     get_db_name, baixar_banco_do_cofre, salvar_banco_no_cofre, criar_base_de_dados, 
     carregar_configuracoes, salvar_configuracoes, criar_backup_banco, 
     backup_para_icloud, obter_estatisticas_questoes, limpar_dados_teste, 
@@ -31,8 +37,6 @@ from db import (
     detectar_duplicata, buscar_questoes_proximas, excluir_questao
 )
 
-# 3. A PRIMEIRA linha de comando Streamlit (obrigatório ser a primeira)
-st.set_page_config(page_title="Professorei", page_icon="🎓", layout="wide", initial_sidebar_state="collapsed")
 # --- 🍪 MÁGICA 1: INICIALIZA O GERENCIADOR DE COOKIES ---
 import extra_streamlit_components as stx
 
@@ -274,8 +278,8 @@ with st.sidebar:
         msg_erro = st.text_area("O que aconteceu?")
         if st.button("Enviar Relato"):
             with conn_central:
-                conn_central.execute(text("CREATE TABLE IF NOT EXISTS bugs (id SERIAL PRIMARY KEY, msg TEXT, data TEXT)"))
-                conn_central.execute(text("INSERT INTO bugs (msg, data) VALUES (:m, :d)"), {"m": msg_erro, "d": datetime.now().strftime("%d/%m %H:%M")})
+                conn_central.session.execute(text("CREATE TABLE IF NOT EXISTS bugs (id SERIAL PRIMARY KEY, msg TEXT, data TEXT)"))
+                conn_central.session.execute(text("INSERT INTO bugs (msg, data) VALUES (:m, :d)"), {"m": msg_erro, "d": datetime.now().strftime("%d/%m %H:%M")})
                 conn_central.commit()
             st.success("Relato salvo no Supabase! Vou analisar em breve.")
     # 3. O NOVO DEPURADOR (Sua "Caixa-Preta")
@@ -640,7 +644,7 @@ with aba_avaliacoes:
                 st.write("---")
                 st.markdown("**⚙️ Configuração**")
                 id_editar = int(q_sel.split(" | ")[0].replace("ID ", ""))
-                q_data = conn_central.execute(text('SELECT disciplina, assunto, dificuldade, enunciado, imagem, pontos, tipo, gabarito_discursivo, espaco_resposta, espaco_linhas, gabarito_imagem, uso_quest FROM questoes WHERE id=:id'), {"id": id_editar}).fetchone()
+                q_data = conn_central.session.execute(text('SELECT disciplina, assunto, dificuldade, enunciado, imagem, pontos, tipo, gabarito_discursivo, espaco_resposta, espaco_linhas, gabarito_imagem, uso_quest FROM questoes WHERE id=:id'), {"id": id_editar}).fetchone()
                 
                 if q_data:
                     q_disc, q_ass, q_dif, q_enun, q_img, q_pts, q_tipo, q_gab_disc, q_esp, q_esp_l, q_gab_img, q_uso = q_data
@@ -711,7 +715,7 @@ with aba_avaliacoes:
                         if n_img_up: ci2.image(n_img_up, caption="🆕 Nova", width=150)
                     # --- 3. LÓGICA DE RESPOSTAS E GABARITOS PADRONIZADA ---
                     # Busca alternativas direto no Supabase
-                    alts_q = conn_central.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": id_editar}).fetchall()
+                    alts_q = conn_central.session.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": id_editar}).fetchall()
                     st.write("---")
                     
                     if n_tipo == "Múltipla Escolha":
@@ -902,16 +906,16 @@ with aba_avaliacoes:
                         val_gab = gab_d_final if 'gab_d_final' in locals() else q_gab_disc
                         
                         sql_upd = """UPDATE questoes SET disciplina=:d, assunto=:as, dificuldade=:dif, enunciado=:en, pontos=:pt, espaco_resposta=:er, espaco_linhas=:el, tipo=:t, imagem=:img, gabarito_imagem=:gimg, gabarito_discursivo=:gd, uso_quest=:u WHERE id=:id"""
-                        conn_central.execute(text(sql_upd), {"d": n_disc, "as": n_ass, "dif": n_dif, "en": n_enun_final, "pt": n_pts, "er": n_esp, "el": n_tam, "t": n_tipo, "img": i_f, "gimg": i_g_f, "gd": val_gab, "u": n_uso, "id": id_editar})
+                        conn_central.session.execute(text(sql_upd), {"d": n_disc, "as": n_ass, "dif": n_dif, "en": n_enun_final, "pt": n_pts, "er": n_esp, "el": n_tam, "t": n_tipo, "img": i_f, "gimg": i_g_f, "gd": val_gab, "u": n_uso, "id": id_editar})
                         
                         if n_tipo in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
-                            conn_central.execute(text('DELETE FROM alternativas WHERE questao_id = :id'), {"id": id_editar})
+                            conn_central.session.execute(text('DELETE FROM alternativas WHERE questao_id = :id'), {"id": id_editar})
                             for j, (t, co) in enumerate(alts_modificadas):
                                 img_obj = alts_imagens_novas.get(j); img_bd = None
                                 if hasattr(img_obj, 'getbuffer'):
                                     img_bd = subir_imagem_nuvem(img_obj, f"edit_alt_{id_editar}_{j}_{sanitizar_nome(img_obj.name)}")
                                 else: img_bd = img_obj
-                                conn_central.execute(text('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (:qid, :t, :c, :img)'), {"qid": id_editar, "t": t, "c": co, "img": img_bd})
+                                conn_central.session.execute(text('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (:qid, :t, :c, :img)'), {"qid": id_editar, "t": t, "c": co, "img": img_bd})
                         
                         conn_central.commit()
                         salvar_banco_no_cofre()
@@ -1206,7 +1210,7 @@ with aba_avaliacoes:
                         st.caption("⚠️ Atenção: Edições nas alternativas SÓ vão para o PDF se você clicar em 'Atualizar no Banco' abaixo.")
                         
                         # Busca alternativas direto no Supabase
-                        alts_q_adj = conn_central.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": q['id']}).fetchall()
+                        alts_q_adj = conn_central.session.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": q['id']}).fetchall()
                             
                         n_opt_key_adj = f"adj_n_opt_{q['id']}"
                         if n_opt_key_adj not in st.session_state: st.session_state[n_opt_key_adj] = max(len(alts_q_adj), 4)
@@ -1287,7 +1291,7 @@ with aba_avaliacoes:
                                 alts_modificadas_adj.append((txt_a, corr))
 
                     elif q['tipo'] == "Verdadeiro ou Falso":
-                        alts_q_adj = conn_central.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": q['id']}).fetchall()
+                        alts_q_adj = conn_central.session.execute(text('SELECT texto, correta, imagem FROM alternativas WHERE questao_id = :id ORDER BY id'), {"id": q['id']}).fetchall()
                         
                         idx_banco = 0 if any(a[0] == "Verdadeiro" and a[1] for a in alts_q_adj) else 1
                         st.write("---")
@@ -1370,16 +1374,16 @@ with aba_avaliacoes:
                     is_clone = "_copy_" in str(q['id'])
                     
                     sql_upd_prova = """UPDATE questoes SET enunciado=:en, pontos=:pt, imagem=:img, gabarito_imagem=:gimg, gabarito_discursivo=:gd WHERE id=:id"""
-                    conn_central.execute(text(sql_upd_prova), {"en": novo_enun, "pt": novo_pt, "img": img_temp, "gimg": img_gab_temp, "gd": novo_gab, "id": q['id']})
+                    conn_central.session.execute(text(sql_upd_prova), {"en": novo_enun, "pt": novo_pt, "img": img_temp, "gimg": img_gab_temp, "gd": novo_gab, "id": q['id']})
                     
                     if q['tipo'] in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
-                        conn_central.execute(text('DELETE FROM alternativas WHERE questao_id = :id'), {"id": q['id']})
+                        conn_central.session.execute(text('DELETE FROM alternativas WHERE questao_id = :id'), {"id": q['id']})
                         for j, (t, co) in enumerate(alts_modificadas_adj):
                             img_obj = alts_imagens_novas_adj.get(j); img_bd = None
                             if hasattr(img_obj, 'getbuffer'):
                                 img_bd = subir_imagem_nuvem(img_obj, f"upd_alt_{q['id']}_{j}_{sanitizar_nome(img_obj.name)}")
                             else: img_bd = img_obj
-                            conn_central.execute(text('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (:qid, :t, :c, :img)'), {"qid": q['id'], "t": t, "c": co, "img": img_bd})
+                            conn_central.session.execute(text('INSERT INTO alternativas (questao_id, texto, correta, imagem) VALUES (:qid, :t, :c, :img)'), {"qid": q['id'], "t": t, "c": co, "img": img_bd})
                     
                     conn_central.commit()
                     salvar_banco_no_cofre()
