@@ -619,8 +619,10 @@ with aba_avaliacoes:
 
     # --- SUB-ABA 1.2: EDITAR BANCO ---
     with sub_edit:
-        df_todas = pd.read_sql(text('SELECT id, disciplina, assunto, dificuldade, tipo, enunciado FROM questoes ORDER BY id DESC'), conn_central)
-        st.markdown("**🔍 Filtro**")
+        try:
+            df_todas = pd.read_sql(text('SELECT id, disciplina, assunto, dificuldade, tipo, enunciado FROM questoes ORDER BY id DESC'), conn_central)
+        except Exception:
+            df_todas = pd.DataFrame() # Escudo ativado: cria uma tabela vazia falsa para não quebrar o ecrã
         if not df_todas.empty:
             col_f1, col_f2 = st.columns(2)
             disc_filtro = col_f1.selectbox("Filtrar por Disciplina:", ["Todas"] + list(df_todas['disciplina'].unique()), key="ed_filtro_disc")
