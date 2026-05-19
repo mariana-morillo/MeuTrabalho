@@ -8,6 +8,8 @@ import plotly.express as plex
 import random
 import json
 import qrcode
+from sqlalchemy import text
+conn_central = st.connection("supabase", type="sql").engine.connect()
 from datetime import datetime, timedelta
 
 # 1. Seus módulos personalizados
