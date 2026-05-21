@@ -6,11 +6,10 @@ import holidays
 import calendar
 from datetime import datetime, timedelta
 from sqlalchemy import text # ✅ Adicione esta linha no topo
-def renderizar_aba_turmas():
-    conn = st.connection("supabase", type="sql").engine.connect()
-    with conn:
+def renderizar_aba_turmas(conn_central):
+    conn = conn_central.session
         # --- 0. PREPARAÇÃO DE DATAS ---
-        semestres_existentes = pd.read_sql("SELECT DISTINCT semestre FROM turmas", conn)['semestre'].dropna().tolist()
+        semestres_existentes = pd.read_sql(text("SELECT DISTINCT semestre FROM turmas"), conn)['semestre'].dropna().tolist()
         if "2026.1" not in semestres_existentes: semestres_existentes.append("2026.1")
         sem_recente = sorted(semestres_existentes, reverse=True)[0]
 
@@ -27,7 +26,7 @@ def renderizar_aba_turmas():
                 st.markdown("🌓 **Por Semestre**")
                 semestre_ativo = st.selectbox("Selecione o Semestre Letivo:", sorted(semestres_existentes, reverse=True), label_visibility="collapsed", key="filt_sem_vFinal")
             
-            t_db_ativa = pd.read_sql(f"SELECT * FROM turmas WHERE semestre='{semestre_ativo}'", conn)
+            t_db_ativa = pd.read_sql(text(f"SELECT * FROM turmas WHERE semestre='{semestre_ativo}'"), conn)
             
             if not t_db_ativa.empty:
                 with c_f2:
@@ -35,7 +34,7 @@ def renderizar_aba_turmas():
                     t_ativa = st.selectbox("Escolha a Turma:", t_db_ativa['nome'].tolist(), label_visibility="collapsed", key="filt_t_vFinal")
                     id_t_ativa = int(t_db_ativa[t_db_ativa['nome'] == t_ativa]['id'].values[0])
                 
-                modelos_disponiveis = pd.read_sql("SELECT DISTINCT titulo_modelo FROM modelos_ensino", conn)['titulo_modelo'].dropna().tolist()
+                modelos_disponiveis = pd.read_sql(text("SELECT DISTINCT titulo_modelo FROM modelos_ensino"), conn)['titulo_modelo'].dropna().tolist()
                 with c_f3:
                     st.markdown("🏷️ **Disciplina:**")
                     if modelos_disponiveis:
@@ -60,7 +59,7 @@ def renderizar_aba_turmas():
         # --- ABA 3: IMPORTAR ALUNOS ---
         with t_importar:
             st.markdown("**📥 Importar Lista (Excel/CSV)**")
-            t_db_todas = pd.read_sql("SELECT * FROM turmas ORDER BY semestre DESC, nome ASC", conn)
+            t_db_todas = pd.read_sql(text("SELECT * FROM turmas ORDER BY semestre DESC, nome ASC"), conn)
             if not t_db_todas.empty:
                 opcoes_turmas = [f"[{r['semestre']}] {r['nome']}" for _, r in t_db_todas.iterrows()]
                 t_up_sel = st.selectbox("Turma de Destino:", opcoes_turmas, key="imp_t_dest_vF")
@@ -88,13 +87,13 @@ def renderizar_aba_turmas():
                 
                 with sub_mat:
                     st.markdown(f"**Quais alunos de {t_ativa} farão {d_ativa}?**")
-                    alunos_turma_base = pd.read_sql(f"SELECT id, nome, ra, email, observacoes FROM alunos WHERE turma_id={id_t_ativa} ORDER BY nome", conn)
+                    alunos_turma_base = pd.read_sql(text(f"SELECT id, nome, ra, email, observacoes FROM alunos WHERE turma_id={id_t_ativa} ORDER BY nome"), conn)
                     
                     if alunos_turma_base.empty:
                         st.info("Importe a lista de alunos da turma no menu superior de 'Importação'.")
                     else:
                         # 1. GERENCIAMENTO DE MATRÍCULA
-                        matriculados = pd.read_sql(f"SELECT aluno_id FROM matriculas_disciplina WHERE turma_id={id_t_ativa} AND disciplina='{d_ativa}'", conn)['aluno_id'].tolist()
+                        matriculados = pd.read_sql(text(f"SELECT aluno_id FROM matriculas_disciplina WHERE turma_id={id_t_ativa} AND disciplina='{d_ativa}'"), conn)['aluno_id'].tolist()
                         alunos_dict = dict(zip(alunos_turma_base['nome'], alunos_turma_base['id']))
                         nomes_pre_selecionados = [nome for nome, id_al in alunos_dict.items() if id_al in matriculados]
                         selecionados = st.multiselect("Selecione os matriculados nesta disciplina:", options=alunos_turma_base['nome'].tolist(), default=nomes_pre_selecionados if matriculados else alunos_turma_base['nome'].tolist())
@@ -113,7 +112,7 @@ def renderizar_aba_turmas():
 
                         st.write("---")
                         st.markdown("**🆔 Lista de Alunos e Anotações Pedagógicas**")
-                        df_edit_lista = pd.read_sql(f"SELECT a.id, a.ra as RA, a.nome as Nome, a.email as E_mail, a.observacoes as [Anotações Pedagógicas] FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_ativa} AND m.disciplina='{d_ativa}' ORDER BY a.nome", conn)
+                        df_edit_lista = pd.read_sql(text(f"SELECT a.id, a.ra as RA, a.nome as Nome, a.email as E_mail, a.observacoes as "Anotações Pedagógicas" FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_ativa} AND m.disciplina='{d_ativa}' ORDER BY a.nome"), conn)
                         if not df_edit_lista.empty:
                             df_resultado_edicao = st.data_editor(df_edit_lista, column_config={"id": None, "RA": st.column_config.TextColumn("RA", disabled=True), "Nome": st.column_config.TextColumn("Nome do Aluno", width="medium"), "E_mail": st.column_config.TextColumn("E-mail"), "Anotações Pedagógicas": st.column_config.TextColumn("Notas (TDAH, Liderança, etc.)", width="large")}, hide_index=True, use_container_width=True, key=f"editor_alunos_{id_t_ativa}_{d_ativa}")
                             # --- Dentro de with sub_mat: ---
@@ -173,7 +172,7 @@ def renderizar_aba_turmas():
                             key_temp = f"temp_cron_{id_t_ativa}"
                             if key_temp in st.session_state:
                                 st.write("") 
-                                df_fab = pd.read_sql(f"SELECT num_aula, tema FROM roteiro_mestre WHERE titulo_modelo='{d_ativa}' ORDER BY num_aula", conn)
+                                df_fab = pd.read_sql(text(f"SELECT num_aula, tema FROM roteiro_mestre WHERE titulo_modelo='{d_ativa}' ORDER BY num_aula"), conn)
                                 dict_fab = {f"Aula {row['num_aula']}: {row['tema']}": row['num_aula'] for _, row in df_fab.iterrows()}
                                 opcoes_fab = ["-- Selecionar --", "Aula Extra / Revisão", "Prova N1", "Prova N2", "Prova N3", "Exame AR"] + list(dict_fab.keys())
                                 c_p2_1, c_p2_2, c_p2_3 = st.columns([0.4, 0.35, 0.25], vertical_alignment="bottom")
@@ -222,7 +221,7 @@ def renderizar_aba_turmas():
                                     conn.commit(); st.success("Cronograma salvo!"); del st.session_state[key_temp]; st.rerun()
 
                     with aba_plano_real:
-                        df_master = pd.read_sql(f"SELECT c.*, d.conteudo_real FROM cronograma_detalhado c LEFT JOIN diario_conteudo d ON c.turma_id = d.turma_id AND c.disciplina = d.disciplina AND c.data = d.data WHERE c.turma_id={id_t_ativa} AND c.disciplina='{d_ativa}' ORDER BY c.num_aula", conn)
+                        df_master = pd.read_sql(text(f"SELECT c.*, d.conteudo_real FROM cronograma_detalhado c LEFT JOIN diario_conteudo d ON c.turma_id = d.turma_id AND c.disciplina = d.disciplina AND c.data = d.data WHERE c.turma_id={id_t_ativa} AND c.disciplina='{d_ativa}' ORDER BY c.num_aula"), conn)
                         if not df_master.empty:
                             for idx, row in df_master.iterrows():
                                 st_icon = "✅" if pd.notna(row['conteudo_real']) else "📅"
@@ -280,7 +279,7 @@ def renderizar_aba_turmas():
                                 st.write("---")
 
                 with sub_pesos:
-                    df_ativ_sala = pd.read_sql(f"SELECT data, aluno_ra as Matrícula, entregou FROM atividades_sala WHERE turma_id={id_t_ativa} AND disciplina='{d_ativa}' ORDER BY data", conn)
+                    df_ativ_sala = pd.read_sql(text(f"SELECT data, aluno_ra as Matrícula, entregou FROM atividades_sala WHERE turma_id={id_t_ativa} AND disciplina='{d_ativa}' ORDER BY data"), conn)
                     datas_unicas = df_ativ_sala['data'].unique() if not df_ativ_sala.empty else []
                     qtd_aulas_registradas = len(datas_unicas)
                     st.markdown("**📊 Central Dinâmica de Notas e Médias**")
@@ -356,9 +355,9 @@ def renderizar_aba_turmas():
                     cextras = []
                     for ex_n, ex_q, ex_w, ex_c in extras_list: cextras.extend([f"{ex_n} {j+1}" for j in range(int(ex_q))])
                     tent = cp + cl + clb + cativs + cextras
-                    df_al = pd.read_sql(f"SELECT a.ra as Matrícula, a.nome as Nome FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_ativa} AND m.disciplina='{d_ativa}' ORDER BY a.nome", conn)
+                    df_al = pd.read_sql(text(f"SELECT a.ra as Matrícula, a.nome as Nome FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_ativa} AND m.disciplina='{d_ativa}' ORDER BY a.nome"), conn)
                     if not df_al.empty:
-                        df_nb = pd.read_sql(f"SELECT matricula as Matrícula, avaliacao, nota FROM notas_flexiveis WHERE turma_id={id_t_ativa} AND disciplina='{d_ativa}'", conn)
+                        df_nb = pd.read_sql(text(f"SELECT matricula as Matrícula, avaliacao, nota FROM notas_flexiveis WHERE turma_id={id_t_ativa} AND disciplina='{d_ativa}'"), conn)
                         df_piv = df_nb.pivot_table(index='Matrícula', columns='avaliacao', values='nota', aggfunc='max').reset_index() if not df_nb.empty else pd.DataFrame(columns=['Matrícula'])
                         df_at = pd.merge(df_al, df_piv, on="Matrícula", how="left")
                         if len(datas_unicas) > 0 and w_a > 0:
@@ -420,12 +419,12 @@ def renderizar_aba_turmas():
 
                 with sub_boletim:
                     st.markdown(f"**🏆 Boletim Mestre: {t_ativa} - {d_ativa}**")
-                    df_bol_b = pd.read_sql(f"SELECT a.ra as RA, a.nome as Aluno FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_ativa} AND m.disciplina='{d_ativa}'", conn)
+                    df_bol_b = pd.read_sql(text(f"SELECT a.ra as RA, a.nome as Aluno FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_ativa} AND m.disciplina='{d_ativa}'"), conn)
                     if not df_bol_b.empty:
                         hoje = datetime.today().date(); meses = {1: 'janeiro', 2: 'fevereiro', 3: 'março', 4: 'abril', 5: 'maio', 6: 'junho', 7: 'julho', 8: 'agosto', 9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'}
                         cft, cfa = st.columns(2); ftempo = cft.selectbox("Período:", ["Semestre Inteiro", f"Este mês ({meses[hoje.month]})", "Hoje", "Esta semana"]); asel = cfa.selectbox("Aluno:", ["Visão Geral"] + df_bol_b['Aluno'].tolist())
-                        df_dia_b = pd.read_sql(f"SELECT aluno_ra as RA, data, status FROM diario WHERE turma_id = {id_t_ativa}", conn)
-                        df_dojo_b = pd.read_sql(f"SELECT aluno_ra as RA, data, pontos FROM logs_comportamento WHERE turma_id = {id_t_ativa} AND aluno_ra != 'TURMA_INTEIRA'", conn)
+                        df_dia_b = pd.read_sql(text(f"SELECT aluno_ra as RA, data, status FROM diario WHERE turma_id = {id_t_ativa}"), conn)
+                        df_dojo_b = pd.read_sql(text(f"SELECT aluno_ra as RA, data, pontos FROM logs_comportamento WHERE turma_id = {id_t_ativa} AND aluno_ra != 'TURMA_INTEIRA'"), conn)
                         df_res = df_bol_b.copy()
                         mapa_m = dict(zip(df_calc['Matrícula'], df_calc['MÉDIA FINAL']))
                         df_res['Média'] = df_res['RA'].map(mapa_m).fillna(0.0)
