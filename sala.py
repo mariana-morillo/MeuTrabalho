@@ -1,6 +1,6 @@
 # sala.py
 import streamlit as st
-import sqlite3
+from sqlalchemy import text
 import pandas as pd
 import plotly.express as plex 
 import random
@@ -8,17 +8,15 @@ import json
 import time
 from datetime import datetime, timedelta
 from latex_utils import gerar_preview_web
-from db import salvar_banco_no_cofre, get_db_name
+from db import get_db_name
 
-def renderizar_aba_sala():
-    with sqlite3.connect(get_db_name()) as conn:
-        # 1. SETUP DE TABELAS
-        conn.execute('''CREATE TABLE IF NOT EXISTS diario_conteudo (id INTEGER PRIMARY KEY, turma_id INTEGER, disciplina TEXT, data TEXT, conteudo_real TEXT, observacao TEXT)''')
-        conn.execute('''CREATE TABLE IF NOT EXISTS atividades_sala (id INTEGER PRIMARY KEY, turma_id INTEGER, disciplina TEXT, data TEXT, aluno_ra TEXT, entregou INTEGER)''')
+def renderizar_aba_sala(conn_central):
+    
         
-        semestres_db = pd.read_sql("SELECT DISTINCT semestre FROM turmas ORDER BY semestre DESC", conn)
+        
+        semestres_db = pd.read_sql(text("SELECT DISTINCT semestre FROM turmas ORDER BY semestre DESC"), conn_central)
         sem_hj = semestres_db['semestre'].iloc[0] if not semestres_db.empty else "2026.1"
-        turmas_df = pd.read_sql(f"SELECT id, nome FROM turmas WHERE semestre='{sem_hj}'", conn)
+        turmas_df = pd.read_sql(text(f"SELECT id, nome FROM turmas WHERE semestre='{sem_hj}'"), conn_central)
         
         if turmas_df.empty:
             st.info("Cadastre uma turma primeiro.")
@@ -30,7 +28,7 @@ def renderizar_aba_sala():
             
             if t_aula_nome != "-- Escolha --":
                 id_t_sel = int(turmas_df[turmas_df['nome'] == t_aula_nome]['id'].values[0])
-                discs_turma = pd.read_sql(f"SELECT DISTINCT disciplina FROM matriculas_disciplina WHERE turma_id={id_t_sel}", conn)
+                discs_turma = pd.read_sql(text(f"SELECT DISTINCT disciplina FROM matriculas_disciplina WHERE turma_id={id_t_sel}"), conn_central)
                 lista_discs = discs_turma['disciplina'].tolist() if not discs_turma.empty else ["Nenhuma"]
                 disc_sel = c_s2.selectbox("🏷️ Disciplina:", ["-- Escolha --"] + lista_discs, key="final_d_sel")
 
@@ -100,29 +98,31 @@ def renderizar_aba_sala():
                     st.write("---")
                     
                     try:
-                        conn.execute('''CREATE TABLE IF NOT EXISTS duvidas_alunos (id INTEGER PRIMARY KEY AUTOINCREMENT, turma_id INTEGER, disciplina TEXT, aluno_ra TEXT, data TEXT, mensagem TEXT, respondida BOOLEAN DEFAULT 0)''')
-                        df_duvidas = pd.read_sql(f"SELECT id FROM duvidas_alunos WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}' AND respondida=0", conn)
+                        conn_central.session.execute('''CREATE TABLE IF NOT EXISTS duvidas_alunos (id INTEGER PRIMARY KEY AUTOINCREMENT, turma_id INTEGER, disciplina TEXT, aluno_ra TEXT, data TEXT, mensagem TEXT, respondida BOOLEAN DEFAULT 0)''')
+                        df_duvidas = pd.read_sql(text(f"SELECT id FROM duvidas_alunos WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}' AND respondida=FALSE"), conn_central)
                         if not df_duvidas.empty:
                             st.error(f"🚨 **VOCÊ TEM {len(df_duvidas)} NOVA(S) DÚVIDA(S)!** Verifique a aba de Dúvidas.")
                     except: pass
                     
                     modo_aula = st.radio("Ação:", ["⭐ Comportamento", "🙋 Fazer Chamada", "✍️ Atividade de Sala", "🎲 Sortear Aluno", "👥 Grupos", "📖 Registrar Diário", "📩 Responder Dúvidas"], horizontal=True)
                     
-                    alunos_sala = pd.read_sql(f"SELECT a.ra, a.nome, a.avatar_style, a.avatar_opts, a.observacoes FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_sel} AND m.disciplina='{disc_sel}' ORDER BY a.nome", conn)
-
+                    alunos_sala = pd.read_sql(text(f"SELECT a.ra, a.nome, a.avatar_style, a.avatar_opts, a.observacoes FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_sel} AND m.disciplina='{disc_sel}' ORDER BY a.nome"), conn_central)
                     if modo_aula == "⭐ Comportamento":
-                        df_p = pd.read_sql(f"SELECT aluno_ra, SUM(CASE WHEN data='{data_str_global}' AND pontos>0 THEN pontos ELSE 0 END) as dia_pos, SUM(CASE WHEN data='{data_str_global}' AND pontos<0 THEN pontos ELSE 0 END) as dia_neg, SUM(pontos) as total_geral FROM logs_comportamento WHERE turma_id={id_t_sel} GROUP BY aluno_ra", conn)
-                        df_t_pts = pd.read_sql(f"SELECT SUM(CASE WHEN data='{data_str_global}' AND pontos>0 THEN pontos ELSE 0 END) as d_pos, SUM(CASE WHEN data='{data_str_global}' AND pontos<0 THEN pontos ELSE 0 END) as d_neg, SUM(pontos) as t_geral FROM logs_comportamento WHERE turma_id={id_t_sel} AND aluno_ra='TURMA_INTEIRA'", conn).iloc[0].fillna(0)
+                        df_p = pd.read_sql(text(f"SELECT aluno_ra, SUM(CASE WHEN data='{data_str_global}' AND pontos>0 THEN pontos ELSE 0 END) as dia_pos, SUM(CASE WHEN data='{data_str_global}' AND pontos<0 THEN pontos ELSE 0 END) as dia_neg, SUM(pontos) as total_geral FROM logs_comportamento WHERE turma_id={id_t_sel} GROUP BY aluno_ra"), conn_central)
+    df_t_pts = pd.read_sql(text(f"SELECT SUM(CASE WHEN data='{data_str_global}' AND pontos>0 THEN pontos ELSE 0 END) as d_pos, SUM(CASE WHEN data='{data_str_global}' AND pontos<0 THEN pontos ELSE 0 END) as d_neg, SUM(pontos) as t_geral FROM logs_comportamento WHERE turma_id={id_t_sel} AND aluno_ra='TURMA_INTEIRA'"), conn_central).iloc[0].fillna(0)
                         alunos_dojo = pd.merge(alunos_sala, df_p, left_on='ra', right_on='aluno_ra', how='left').fillna(0)
 
                         @st.dialog("Lançar FeedBack")
                         def modal_feedback(ra, nome):
                             st.write(f"Dar ponto para: **{nome}**")
                             def b_salvar(m, p):
-                                with sqlite3.connect(get_db_name()) as c:
-                                    c.execute("INSERT INTO logs_comportamento (aluno_ra, turma_id, data, pontos, comentario, tipo) VALUES (?,?,?,?,?,?)", (ra, id_t_sel, data_str_global, p, m, "Feedback"))
-                                    c.commit()
-                                salvar_banco_no_cofre()
+                                with conn_central.session.begin():
+                                    # No SQLAlchemy, usamos :nome em vez de ?
+                                    conn_central.session.execute(
+                                        text("INSERT INTO logs_comportamento (aluno_ra, turma_id, data, pontos, comentario, tipo) VALUES (:ra, :tid, :d, :p, :m, :tp)"),
+                                        {"ra": ra, "tid": id_t_sel, "d": data_str_global, "p": p, "m": m, "tp": "Feedback"}
+                                    )
+                                # Não é necessário chamar salvar_banco_no_cofre() aqui, a nuvem já gravou.
                                 st.rerun()
                             c1, c2 = st.columns(2)
                             if c1.button("❤️ Ajuda"): b_salvar("Ajudando os colegas", 1.0)
@@ -150,10 +150,10 @@ def renderizar_aba_sala():
                                     if st.button("Feedback", key=f"f_{row['ra']}", use_container_width=True): modal_feedback(row['ra'], row['nome'])
 
                     elif modo_aula == "🙋 Fazer Chamada":
-                        df_f = pd.read_sql(f"SELECT aluno_ra, COUNT(*) as total FROM diario WHERE turma_id={id_t_sel} AND status='Ausente' GROUP BY aluno_ra", conn)
+                        df_f = pd.read_sql(text(f"SELECT aluno_ra, COUNT(*) as total FROM diario WHERE turma_id={id_t_sel} AND status='Ausente' GROUP BY aluno_ra"), conn_central)
                         dict_f = dict(zip(df_f['aluno_ra'], df_f['total']))
                         if "m_ch" not in st.session_state:
-                            df_dia = pd.read_sql(f"SELECT aluno_ra, status FROM diario WHERE turma_id={id_t_sel} AND data='{data_str_global}'", conn)
+                            df_dia = pd.read_sql(text(f"SELECT aluno_ra, status FROM diario WHERE turma_id={id_t_sel} AND data='{data_str_global}'"), conn_central)
                             freq = dict(zip(df_dia['aluno_ra'], df_dia['status']))
                             st.session_state.m_ch = {r['ra']: freq.get(r['ra'], "Presente") for _, r in alunos_sala.iterrows()}
                         
@@ -165,10 +165,18 @@ def renderizar_aba_sala():
                             for r in st.session_state.m_ch: st.session_state.m_ch[r] = "Ausente"
                             st.rerun()
                         if c3.button("💾 SALVAR"):
-                            for ra, stt in st.session_state.m_ch.items():
-                                conn.execute("DELETE FROM diario WHERE turma_id=? AND data=? AND aluno_ra=?", (id_t_sel, data_str_global, ra))
-                                conn.execute("INSERT INTO diario (turma_id, data, aluno_ra, presente, status) VALUES (?,?,?,?,?)", (id_t_sel, data_str_global, ra, stt!="Ausente", stt))
-                            conn.commit(); salvar_banco_no_cofre(); st.success("Salvo!"); st.rerun()
+                            with conn_central.session.begin():
+                                for ra, stt in st.session_state.m_ch.items():
+                                    conn_central.session.execute(
+                                        text("DELETE FROM diario WHERE turma_id=:tid AND data=:d AND aluno_ra=:ra"), 
+                                        {"tid": id_t_sel, "d": data_str_global, "ra": ra}
+                                    )
+                                    conn_central.session.execute(
+                                        text("INSERT INTO diario (turma_id, data, aluno_ra, presente, status) VALUES (:tid, :d, :ra, :p, :stt)"), 
+                                        {"tid": id_t_sel, "d": data_str_global, "ra": ra, "p": stt != "Ausente", "stt": stt}
+                                    )
+                            # Remover o salvar_banco_no_cofre(), pois já está na nuvem
+                            st.success("Salvo!"); st.rerun()
                         
                         cols_f = st.columns(6)
                         for idx, row in alunos_sala.iterrows():
@@ -183,7 +191,7 @@ def renderizar_aba_sala():
                                         st.session_state.m_ch[ra] = {"Presente":"Ausente", "Ausente":"Atrasado", "Atrasado":"Presente"}[s]; st.rerun()
 
                     elif modo_aula == "✍️ Atividade de Sala":
-                        df_h = pd.read_sql(f"SELECT data, aluno_ra, entregou FROM atividades_sala WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}'", conn)
+                        df_h = pd.read_sql(text(f"SELECT data, aluno_ra, entregou FROM atividades_sala WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}'"), conn_central)
                         tot_aulas = df_h['data'].nunique()
                         meta = tot_aulas - int(tot_aulas * 0.25) if tot_aulas > 0 else 0
                         st.info(f"📊 Meta: {meta} entregas (Fator descarte 25% aplicado)")
@@ -193,9 +201,9 @@ def renderizar_aba_sala():
                             st.session_state.m_ativ = {r['ra']: d_hj.get(r['ra'], 0) for _, r in alunos_sala.iterrows()}
                         if st.button("💾 Salvar Atividades", type="primary"):
                             for ra, ent in st.session_state.m_ativ.items():
-                                conn.execute("DELETE FROM atividades_sala WHERE turma_id=? AND disciplina=? AND data=? AND aluno_ra=?", (id_t_sel, disc_sel, data_str_global, ra))
-                                conn.execute("INSERT INTO atividades_sala (turma_id, disciplina, data, aluno_ra, entregou) VALUES (?,?,?,?,?)", (id_t_sel, disc_sel, data_str_global, ra, ent))
-                            conn.commit(); salvar_banco_no_cofre(); st.success("Salvo!"); st.rerun()
+                                conn_central.session.execute("DELETE FROM atividades_sala WHERE turma_id=:tid AND disciplina=:tid AND data=:tid AND aluno_ra=:tid", ("tid": id_t_sel, "tid": disc_sel, "tid": data_str_global, "tid": ra))
+                                conn_central.session.execute("INSERT INTO atividades_sala (turma_id, disciplina, data, aluno_ra, entregou) VALUES (:tid,:tid,:tid,:tid,:tid)", ("tid": id_t_sel, "tid": disc_sel, "tid": data_str_global, "tid": ra, "tid": ent))
+                            conn_central.session.commit(); st.success("Salvo!"); st.rerun()
                         cols_f = st.columns(6)
                         for idx, row in alunos_sala.iterrows():
                             ra = row['ra']; ent_hj = st.session_state.m_ativ.get(ra, 0)
@@ -218,7 +226,7 @@ def renderizar_aba_sala():
 
                     elif modo_aula == "👥 Grupos":
                         # Busca o planejamento para saber onde lançar a nota
-                        df_plan = pd.read_sql(f"SELECT nome_avaliacao FROM planejamento_notas WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}'", conn)
+                        df_plan = pd.read_sql(text(f"SELECT nome_avaliacao FROM planejamento_notas WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}'"), conn_central)
                         atividades_validas = df_plan['nome_avaliacao'].tolist()
                         
                         if not atividades_validas: 
@@ -282,26 +290,30 @@ def renderizar_aba_sala():
                                         pts_v = c_pts.number_input("Nota:", 0.0, 10.0, 1.0, 0.5, key=f"pg_{i}")
                                         
                                         if c_btn.button("💾 Lançar", key=f"bg_{i}", use_container_width=True):
-                                            with sqlite3.connect(get_db_name()) as c_n:
+                                            with conn_central.session.begin():
                                                 for al in g:
-                                                    c_n.execute("DELETE FROM notas_flexiveis WHERE turma_id=? AND disciplina=? AND matricula=? AND avaliacao=?", (id_t_sel, disc_sel, al['ra'], atividade_escolhida))
-                                                    c_n.execute("INSERT INTO notas_flexiveis (turma_id, disciplina, matricula, avaliacao, nota) VALUES (?,?,?,?,?)", (id_t_sel, disc_sel, al['ra'], atividade_escolhida, pts_v))
-                                                c_n.commit()
-                                            salvar_banco_no_cofre()
+                                                    conn_central.session.execute(
+                                                        text("DELETE FROM notas_flexiveis WHERE turma_id=:tid AND disciplina=:disc AND matricula=:ra AND avaliacao=:act"),
+                                                        {"tid": id_t_sel, "disc": disc_sel, "ra": al['ra'], "act": atividade_escolhida}
+                                                    )
+                                                    conn_central.session.execute(
+                                                        text("INSERT INTO notas_flexiveis (turma_id, disciplina, matricula, avaliacao, nota) VALUES (:tid, :disc, :ra, :act, :n)"),
+                                                        {"tid": id_t_sel, "disc": disc_sel, "ra": al['ra'], "act": atividade_escolhida, "n": pts_v}
+                                                    )
                                             st.toast(f"Nota {pts_v} salva para o Grupo {i+1}!")
 
                     elif modo_aula == "📖 Registrar Diário":
-                        exp = pd.read_sql(f"SELECT tema FROM cronograma_detalhado WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}' AND data='{data_str_global}'", conn)
+                        exp = pd.read_sql(text(f"SELECT tema FROM cronograma_detalhado WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}' AND data='{data_str_global}'"), conn_central)
                         st.info(f"🎯 Planejado: {exp['tema'].iloc[0] if not exp.empty else 'Não agendado'}")
-                        real_db = pd.read_sql(f"SELECT conteudo_real FROM diario_conteudo WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}' AND data='{data_str_global}'", conn)
+                        real_db = pd.read_sql(text(f"SELECT conteudo_real FROM diario_conteudo WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}' AND data='{data_str_global}'"), conn_central)
                         c_real = st.text_area("O que foi dado hoje?", value=real_db['conteudo_real'].iloc[0] if not real_db.empty else "")
                         if st.button("💾 Salvar Diário", type="primary", use_container_width=True):
-                            conn.execute("DELETE FROM diario_conteudo WHERE turma_id=? AND disciplina=? AND data=?", (id_t_sel, disc_sel, data_str_global))
-                            conn.execute("INSERT INTO diario_conteudo (turma_id, disciplina, data, conteudo_real) VALUES (?,?,?,?)", (id_t_sel, disc_sel, data_str_global, c_real))
-                            conn.commit(); salvar_banco_no_cofre(); st.success("Diário atualizado!")
+                            conn_central.session.execute("DELETE FROM diario_conteudo WHERE turma_id=:tid AND disciplina=:disc AND data=:d", ("tid": id_t_sel, "disc": disc_sel, "d":data_str_global))
+                            conn_central.session.execute("INSERT INTO diario_conteudo (turma_id, disciplina, data, conteudo_real) VALUES (:tid,:disc,:d,:c)", ("tid":id_t_sel, "disc": disc_sel, "d": data_str_global, "c": c_real))
+                            conn_central.session.commit(); st.success("Diário atualizado!")
 
                     elif modo_aula == "📩 Responder Dúvidas":
-                        df_duv = pd.read_sql(f"SELECT d.*, a.nome FROM duvidas_alunos d JOIN alunos a ON d.aluno_ra = a.ra WHERE d.turma_id={id_t_sel} AND d.disciplina='{disc_sel}' ORDER BY d.respondida ASC, d.id DESC", conn)
+                        df_duv = pd.read_sql(text(f"SELECT d.*, a.nome FROM duvidas_alunos d JOIN alunos a ON d.aluno_ra = a.ra WHERE d.turma_id={id_t_sel} AND d.disciplina='{disc_sel}' ORDER BY d.respondida ASC, d.id DESC"), conn_central)
                         if df_duv.empty: st.info("Sem dúvidas!")
                         else:
                             for _, d_row in df_duv.iterrows():
@@ -309,4 +321,4 @@ def renderizar_aba_sala():
                                 st.markdown(f"<div style='border-radius:10px; padding:15px; margin-bottom:10px; background:{bg};'><b>{d_row['nome']}</b>: {d_row['mensagem']}</div>", unsafe_allow_html=True)
                                 if d_row['respondida'] == 0:
                                     if st.button("✅ Resolvido", key=f"ld_{d_row['id']}"):
-                                        conn.execute(f"UPDATE duvidas_alunos SET respondida=1 WHERE id={d_row['id']}"); conn.commit(); salvar_banco_no_cofre(); st.rerun()
+                                        conn_central.session.execute(f"UPDATE duvidas_alunos SET respondida=1 WHERE id={d_row['id']}"); conn_central.session.commit(); st.rerun()
