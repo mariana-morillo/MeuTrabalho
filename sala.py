@@ -109,7 +109,7 @@ def renderizar_aba_sala(conn_central):
                     alunos_sala = pd.read_sql(text(f"SELECT a.ra, a.nome, a.avatar_style, a.avatar_opts, a.observacoes FROM alunos a JOIN matriculas_disciplina m ON a.id = m.aluno_id WHERE m.turma_id={id_t_sel} AND m.disciplina='{disc_sel}' ORDER BY a.nome"), conn_central)
                     if modo_aula == "⭐ Comportamento":
                         df_p = pd.read_sql(text(f"SELECT aluno_ra, SUM(CASE WHEN data='{data_str_global}' AND pontos>0 THEN pontos ELSE 0 END) as dia_pos, SUM(CASE WHEN data='{data_str_global}' AND pontos<0 THEN pontos ELSE 0 END) as dia_neg, SUM(pontos) as total_geral FROM logs_comportamento WHERE turma_id={id_t_sel} GROUP BY aluno_ra"), conn_central)
-    df_t_pts = pd.read_sql(text(f"SELECT SUM(CASE WHEN data='{data_str_global}' AND pontos>0 THEN pontos ELSE 0 END) as d_pos, SUM(CASE WHEN data='{data_str_global}' AND pontos<0 THEN pontos ELSE 0 END) as d_neg, SUM(pontos) as t_geral FROM logs_comportamento WHERE turma_id={id_t_sel} AND aluno_ra='TURMA_INTEIRA'"), conn_central).iloc[0].fillna(0)
+                        df_t_pts = pd.read_sql(text(f"SELECT SUM(CASE WHEN data='{data_str_global}' AND pontos>0 THEN pontos ELSE 0 END) as d_pos, SUM(CASE WHEN data='{data_str_global}' AND pontos<0 THEN pontos ELSE 0 END) as d_neg, SUM(pontos) as t_geral FROM logs_comportamento WHERE turma_id={id_t_sel} AND aluno_ra='TURMA_INTEIRA'"), conn_central).iloc[0].fillna(0)
                         alunos_dojo = pd.merge(alunos_sala, df_p, left_on='ra', right_on='aluno_ra', how='left').fillna(0)
 
                         @st.dialog("Lançar FeedBack")
@@ -328,4 +328,9 @@ def renderizar_aba_sala(conn_central):
                                 st.markdown(f"<div style='border-radius:10px; padding:15px; margin-bottom:10px; background:{bg};'><b>{d_row['nome']}</b>: {d_row['mensagem']}</div>", unsafe_allow_html=True)
                                 if d_row['respondida'] == 0:
                                     if st.button("✅ Resolvido", key=f"ld_{d_row['id']}"):
-                                        conn_central.session.execute(f"UPDATE duvidas_alunos SET respondida=1 WHERE id={d_row['id']}"); conn_central.session.commit(); st.rerun()
+                                        with conn_central.session.begin():
+                                            conn_central.session.execute(
+                                                text("UPDATE duvidas_alunos SET respondida=TRUE WHERE id=:id"), 
+                                                {"id": int(d_row['id'])}
+                                            )
+                                        st.rerun()
