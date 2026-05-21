@@ -4,30 +4,23 @@ import sqlite3
 import pandas as pd
 from db import salvar_banco_no_cofre
 
-def renderizar_aba_fabrica():
-    with sqlite3.connect('banco_provas.db') as conn:
-        st.markdown("**✅ Selecione ou Crie um Molde de Disciplina**")
-        
-        # Garante que a tabela exista antes de ler
-        conn.execute('''CREATE TABLE IF NOT EXISTS modelos_ensino (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                        titulo_modelo TEXT UNIQUE, ementa TEXT, objetivos_gerais TEXT, 
-                        competencias TEXT, egresso TEXT, conteudo_programatico TEXT, 
-                        metodologia TEXT, recursos TEXT, avaliacao TEXT, aps TEXT, 
-                        bib_basica TEXT, bib_complementar TEXT, outras_ref TEXT)''')
-        
-        disciplinas_salvas = pd.read_sql("SELECT DISTINCT titulo_modelo FROM modelos_ensino", conn)['titulo_modelo'].dropna().tolist()
-        
-        c_d1, c_d2 = st.columns([0.6, 0.4])
-        disc_selecionada = c_d1.selectbox("Modelos Salvos:", ["-- Criar Novo Molde --"] + disciplinas_salvas, key="f_sel_mestre_vFinal")
-        nome_disc = c_d2.text_input("Nome da Disciplina:", value="" if disc_selecionada == "-- Criar Novo Molde --" else disc_selecionada)
+def renderizar_aba_fabrica(conn_central):
+    conn = conn_central.session # Esta linha já está correta!
+    st.markdown("**✅ Selecione ou Crie um Molde de Disciplina**")
+    
+    # Substitua a linha abaixo para usar o text() e o conn:
+    disciplinas_salvas = pd.read_sql(text("SELECT DISTINCT titulo_modelo FROM modelos_ensino"), conn)['titulo_modelo'].dropna().tolist()
+    
+    c_d1, c_d2 = st.columns([0.6, 0.4])
+    disc_selecionada = c_d1.selectbox("Modelos Salvos:", ["-- Criar Novo Molde --"] + disciplinas_salvas, key="f_sel_mestre_vFinal")
+    nome_disc = c_d2.text_input("Nome da Disciplina:", value="" if disc_selecionada == "-- Criar Novo Molde --" else disc_selecionada)
 
         if nome_disc:
             t_ensino, t_aula = st.tabs(["📄 1. Plano de Ensino Oficial", "🧭 2. Plano de Aulas"])
 
             with t_ensino:
                 # Busca os dados do molde selecionado
-                d_m = pd.read_sql(f"SELECT * FROM modelos_ensino WHERE titulo_modelo='{nome_disc}'", conn)
+                d_m = pd.read_sql(text(f"SELECT * FROM modelos_ensino WHERE titulo_modelo='{nome_disc}'"), conn)
                 def get_v(f): return d_m[f].iloc[0] if not d_m.empty and f in d_m.columns else ""
                 
                 with st.form("form_plano_mestre_completo"):
@@ -62,7 +55,7 @@ def renderizar_aba_fabrica():
 
             with t_aula:
                 st.markdown("**🧭 Plano de aulas**")
-                df_aulas = pd.read_sql(f"SELECT num_aula as Aula, tema as Tema FROM roteiro_mestre WHERE titulo_modelo='{nome_disc}' ORDER BY num_aula", conn)
+                df_aulas = pd.read_sql(text(f"SELECT num_aula as Aula, tema as Tema FROM roteiro_mestre WHERE titulo_modelo='{nome_disc}' ORDER BY num_aula"), conn)
                 ed_aulas = st.data_editor(df_aulas, num_rows="dynamic", use_container_width=True, key=f"ed_roteiro_vFinal_{nome_disc}")
                 
                 if st.button("🆙 Atualizar Lista de Aulas"):
@@ -79,7 +72,7 @@ def renderizar_aba_fabrica():
                 st.write("---")
                 a_det = st.selectbox("Selecione a aula para detalhar o Roteiro:", df_aulas['Aula'].tolist() if not df_aulas.empty else [])
                 if a_det:
-                    d_a_res = pd.read_sql(f"SELECT * FROM roteiro_mestre WHERE titulo_modelo='{nome_disc}' AND num_aula={a_det}", conn)
+                    d_a_res = pd.read_sql(text(f"SELECT * FROM roteiro_mestre WHERE titulo_modelo='{nome_disc}' AND num_aula={a_det}"), conn)
                     if not d_a_res.empty:
                         d_a = d_a_res.iloc[0]
                         with st.form(f"f_det_fab_vFinal_{a_det}"):
