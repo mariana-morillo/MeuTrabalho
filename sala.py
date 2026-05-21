@@ -201,8 +201,8 @@ def renderizar_aba_sala(conn_central):
                             st.session_state.m_ativ = {r['ra']: d_hj.get(r['ra'], 0) for _, r in alunos_sala.iterrows()}
                         if st.button("💾 Salvar Atividades", type="primary"):
                             for ra, ent in st.session_state.m_ativ.items():
-                                conn_central.session.execute("DELETE FROM atividades_sala WHERE turma_id=:tid AND disciplina=:tid AND data=:tid AND aluno_ra=:tid", ("tid": id_t_sel, "tid": disc_sel, "tid": data_str_global, "tid": ra))
-                                conn_central.session.execute("INSERT INTO atividades_sala (turma_id, disciplina, data, aluno_ra, entregou) VALUES (:tid,:tid,:tid,:tid,:tid)", ("tid": id_t_sel, "tid": disc_sel, "tid": data_str_global, "tid": ra, "tid": ent))
+                                conn_central.session.execute("DELETE FROM atividades_sala WHERE turma_id=:tid AND disciplina=:disc AND data=:d AND aluno_ra=:a", {"tid": id_t_sel, "disc": disc_sel, "d": data_str_global, "a": ra})
+                                conn_central.session.execute("INSERT INTO atividades_sala (turma_id, disciplina, data, aluno_ra, entregou) VALUES (:tid,:disc,:d,:a,:c)", {"tid": id_t_sel, "disc": disc_sel, "d": data_str_global, "a": ra, "c": ent))
                             conn_central.session.commit(); st.success("Salvo!"); st.rerun()
                         cols_f = st.columns(6)
                         for idx, row in alunos_sala.iterrows():
@@ -308,8 +308,15 @@ def renderizar_aba_sala(conn_central):
                         real_db = pd.read_sql(text(f"SELECT conteudo_real FROM diario_conteudo WHERE turma_id={id_t_sel} AND disciplina='{disc_sel}' AND data='{data_str_global}'"), conn_central)
                         c_real = st.text_area("O que foi dado hoje?", value=real_db['conteudo_real'].iloc[0] if not real_db.empty else "")
                         if st.button("💾 Salvar Diário", type="primary", use_container_width=True):
-                            conn_central.session.execute("DELETE FROM diario_conteudo WHERE turma_id=:tid AND disciplina=:disc AND data=:d", ("tid": id_t_sel, "disc": disc_sel, "d":data_str_global))
-                            conn_central.session.execute("INSERT INTO diario_conteudo (turma_id, disciplina, data, conteudo_real) VALUES (:tid,:disc,:d,:c)", ("tid":id_t_sel, "disc": disc_sel, "d": data_str_global, "c": c_real))
+                            # O certo:
+                            conn_central.session.execute(
+                                text("DELETE FROM diario_conteudo WHERE turma_id=:tid AND disciplina=:disc AND data=:d"),
+                                {"tid": id_t_sel, "disc": disc_sel, "d": data_str_global}
+                            )
+                            conn_central.session.execute(
+                                text("INSERT INTO diario_conteudo (turma_id, disciplina, data, conteudo_real) VALUES (:tid, :disc, :d, :c)"),
+                                {"tid": id_t_sel, "disc": disc_sel, "d": data_str_global, "c": c_real}
+                            )
                             conn_central.session.commit(); st.success("Diário atualizado!")
 
                     elif modo_aula == "📩 Responder Dúvidas":
