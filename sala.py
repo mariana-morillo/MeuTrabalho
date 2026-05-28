@@ -6,15 +6,18 @@ import plotly.express as plex
 import random
 import json
 import time
+import os
 from datetime import datetime, timedelta
 from latex_utils import gerar_preview_web
 from db import get_db_name
 
-def renderizar_aba_sala(conn_central):
+def renderizar_aba_sala():
+    conn_central = st.connection("supabase", type="sql")
     conn = conn_central.session
-    semestres_db = pd.read_sql(text("SELECT DISTINCT semestre FROM turmas ORDER BY semestre DESC"), conn_central)
+    
+    semestres_db = pd.read_sql(text("SELECT DISTINCT semestre FROM turmas ORDER BY semestre DESC"), conn)
     sem_hj = semestres_db['semestre'].iloc[0] if not semestres_db.empty else "2026.1"
-    turmas_df = pd.read_sql(text(f"SELECT id, nome FROM turmas WHERE semestre='{sem_hj}'"), conn_central)
+    turmas_df = pd.read_sql(text(f"SELECT id, nome FROM turmas WHERE semestre='{sem_hj}'"), conn)
     
     if turmas_df.empty:
         st.info("Cadastre uma turma primeiro.")
